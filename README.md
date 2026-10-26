@@ -1,4 +1,4 @@
-# WeightCoach
+# FreshStart
 
 A free, private, Noom-style weight-loss app for Android. Everything stays on your phone: no account, no ads, no subscription.
 
@@ -11,9 +11,9 @@ A free, private, Noom-style weight-loss app for Android. Everything stays on you
 
 ## Install
 Every push to `main` builds a signed APK on GitHub Actions and publishes it as a release.
-On your phone, open the latest release, download `WeightCoach.apk`, and open it. Android will ask you to allow installs from your browser or Files app the first time.
+On your phone, open the latest release, download `FreshStart.apk`, and open it. Android will ask you to allow installs from your browser or Files app the first time.
 
-Updates install over the old version and keep your data, because every build is signed with the same key (`app/weightcoach.keystore`).
+Updates install over the old version and keep your data, because every build is signed with the same key (`app/freshstart.keystore`).
 
 ## Build locally
 Requires the Android SDK (API 35) and JDK 17: `./gradlew assembleRelease`.

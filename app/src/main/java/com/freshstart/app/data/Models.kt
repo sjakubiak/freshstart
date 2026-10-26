@@ -1,4 +1,4 @@
-package com.weightcoach.app.data
+package com.freshstart.app.data
 
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit

@@ -1,4 +1,4 @@
-package com.weightcoach.app.ui
+package com.freshstart.app.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,9 +29,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.weightcoach.app.data.AppStore
-import com.weightcoach.app.data.Calc
-import com.weightcoach.app.data.Lessons
+import com.freshstart.app.data.AppStore
+import com.freshstart.app.data.Calc
+import com.freshstart.app.data.Lessons
 import java.time.LocalDate
 
 @Composable

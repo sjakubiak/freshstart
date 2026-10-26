@@ -1,4 +1,4 @@
-package com.weightcoach.app.ui
+package com.freshstart.app.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.weightcoach.app.data.FoodColor
+import com.freshstart.app.data.FoodColor
 
 val Brand = Color(0xFF2E7D5B)
 val FoodGreen = Color(0xFF3FA65B)
@@ -40,7 +40,7 @@ private val Scheme = lightColorScheme(
 )
 
 @Composable
-fun WeightCoachTheme(content: @Composable () -> Unit) {
+fun FreshStartTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = Scheme, content = content)
 }
 

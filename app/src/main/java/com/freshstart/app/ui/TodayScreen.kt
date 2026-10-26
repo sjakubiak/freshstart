@@ -1,4 +1,4 @@
-package com.weightcoach.app.ui
+package com.freshstart.app.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -37,11 +37,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.weightcoach.app.data.AppStore
-import com.weightcoach.app.data.Calc
-import com.weightcoach.app.data.FoodColor
-import com.weightcoach.app.data.Lessons
-import com.weightcoach.app.data.Meal
+import com.freshstart.app.data.AppStore
+import com.freshstart.app.data.Calc
+import com.freshstart.app.data.FoodColor
+import com.freshstart.app.data.Lessons
+import com.freshstart.app.data.Meal
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 

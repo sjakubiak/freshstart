@@ -1,4 +1,4 @@
-package com.weightcoach.app
+package com.freshstart.app
 
 import android.Manifest
 import android.os.Build
@@ -33,14 +33,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import com.weightcoach.app.data.AppStore
-import com.weightcoach.app.reminders.Reminders
-import com.weightcoach.app.ui.LearnScreen
-import com.weightcoach.app.ui.ProfileForm
-import com.weightcoach.app.ui.ProgressScreen
-import com.weightcoach.app.ui.SettingsScreen
-import com.weightcoach.app.ui.TodayScreen
-import com.weightcoach.app.ui.WeightCoachTheme
+import com.freshstart.app.data.AppStore
+import com.freshstart.app.reminders.Reminders
+import com.freshstart.app.ui.LearnScreen
+import com.freshstart.app.ui.ProfileForm
+import com.freshstart.app.ui.ProgressScreen
+import com.freshstart.app.ui.SettingsScreen
+import com.freshstart.app.ui.TodayScreen
+import com.freshstart.app.ui.FreshStartTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,7 +48,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val store = storeFor(this)
         setContent {
-            WeightCoachTheme { App(store) }
+            FreshStartTheme { App(store) }
         }
     }
 
@@ -96,7 +96,7 @@ fun App(store: AppStore) {
                 modifier = Modifier.padding(padding),
                 header = {
                     Column {
-                        Text("Welcome to WeightCoach", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                        Text("Welcome to FreshStart", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                         Text(
                             "A few questions to build your plan. It takes less than a minute, and everything stays on your phone.",
                             style = MaterialTheme.typography.bodyLarge

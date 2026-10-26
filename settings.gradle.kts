@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "WeightCoach"
+rootProject.name = "FreshStart"
 include(":app")

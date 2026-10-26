@@ -1,4 +1,4 @@
-package com.weightcoach.app.data
+package com.freshstart.app.data
 
 import android.content.Context
 import androidx.compose.runtime.getValue
@@ -11,7 +11,7 @@ import java.io.File
 
 /** All app data, kept in one JSON file on the phone. Nothing leaves the device. */
 class AppStore(context: Context) {
-    private val file = File(context.filesDir, "weightcoach.json")
+    private val file = File(context.filesDir, "freshstart.json")
 
     var profile by mutableStateOf<Profile?>(null)
         private set
@@ -129,7 +129,7 @@ class AppStore(context: Context) {
         } catch (e: Exception) {
             // Keep a copy of an unreadable file rather than silently losing it.
             runCatching {
-                file.copyTo(File(file.parentFile, "weightcoach-corrupt-${System.currentTimeMillis()}.json"), overwrite = true)
+                file.copyTo(File(file.parentFile, "freshstart-corrupt-${System.currentTimeMillis()}.json"), overwrite = true)
             }
         }
     }
@@ -166,7 +166,7 @@ class AppStore(context: Context) {
         root.put("lessonsRead", JSONArray().apply { lessonsRead.forEach { put(it) } })
 
         // Write to a temp file first so a crash mid-write can't corrupt the data.
-        val tmp = File(file.parentFile, "weightcoach.json.tmp")
+        val tmp = File(file.parentFile, "freshstart.json.tmp")
         tmp.writeText(root.toString())
         if (!tmp.renameTo(file)) {
             file.writeText(root.toString())

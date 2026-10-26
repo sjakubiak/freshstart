@@ -1,4 +1,4 @@
-package com.weightcoach.app.ui
+package com.freshstart.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -27,8 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.weightcoach.app.data.AppStore
-import com.weightcoach.app.data.Calc
+import com.freshstart.app.data.AppStore
+import com.freshstart.app.data.Calc
 
 @Composable
 fun SettingsScreen(store: AppStore, onRemindersChanged: (Boolean) -> Unit) {
@@ -135,7 +135,7 @@ fun SettingsScreen(store: AppStore, onRemindersChanged: (Boolean) -> Unit) {
         }
 
         Text(
-            "Everything you log stays on this phone. WeightCoach has no account, no ads and no internet access. " +
+            "Everything you log stays on this phone. FreshStart has no account, no ads and no internet access. " +
                 "It's a helper, not medical advice; check with your doctor before big diet changes.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant

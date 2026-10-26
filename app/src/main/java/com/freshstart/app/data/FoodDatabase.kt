@@ -1,8 +1,8 @@
-package com.weightcoach.app.data
+package com.freshstart.app.data
 
-import com.weightcoach.app.data.FoodColor.GREEN
-import com.weightcoach.app.data.FoodColor.RED
-import com.weightcoach.app.data.FoodColor.YELLOW
+import com.freshstart.app.data.FoodColor.GREEN
+import com.freshstart.app.data.FoodColor.RED
+import com.freshstart.app.data.FoodColor.YELLOW
 
 /** Common foods with typical calories per serving. Colors follow calorie density. */
 object FoodDatabase {

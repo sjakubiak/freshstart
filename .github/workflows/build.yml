@@ -25,18 +25,18 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --stacktrace
-          cp app/build/outputs/apk/release/app-release.apk WeightCoach.apk
+          cp app/build/outputs/apk/release/app-release.apk FreshStart.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: WeightCoach
-          path: WeightCoach.apk
+          name: FreshStart
+          path: FreshStart.apk
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: WeightCoach 1.0.${{ github.run_number }}
-          body: Download WeightCoach.apk on your Android phone and open it to install or update.
-          files: WeightCoach.apk
+          name: FreshStart 1.0.${{ github.run_number }}
+          body: Download FreshStart.apk on your Android phone and open it to install or update.
+          files: FreshStart.apk
           make_latest: true

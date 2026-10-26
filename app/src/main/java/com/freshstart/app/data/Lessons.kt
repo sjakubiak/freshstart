@@ -1,4 +1,4 @@
-package com.weightcoach.app.data
+package com.freshstart.app.data
 
 data class Lesson(val title: String, val body: String)
 

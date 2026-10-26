@@ -1,4 +1,4 @@
-package com.weightcoach.app.ui
+package com.freshstart.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,10 +26,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.weightcoach.app.data.Activity
-import com.weightcoach.app.data.Calc
-import com.weightcoach.app.data.Profile
-import com.weightcoach.app.data.Sex
+import com.freshstart.app.data.Activity
+import com.freshstart.app.data.Calc
+import com.freshstart.app.data.Profile
+import com.freshstart.app.data.Sex
 import java.time.LocalDate
 import kotlin.math.abs
 import kotlin.math.roundToInt

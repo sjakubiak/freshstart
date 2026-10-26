@@ -1,4 +1,4 @@
-package com.weightcoach.app.reminders
+package com.freshstart.app.reminders
 
 import android.Manifest
 import android.app.NotificationChannel
@@ -17,8 +17,8 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
-import com.weightcoach.app.MainActivity
-import com.weightcoach.app.R
+import com.freshstart.app.MainActivity
+import com.freshstart.app.R
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -86,7 +86,7 @@ class ReminderWorker(context: Context, params: WorkerParameters) : Worker(contex
         Reminders.show(
             applicationContext,
             inputData.getInt("id", 1),
-            inputData.getString("title") ?: "WeightCoach",
+            inputData.getString("title") ?: "FreshStart",
             inputData.getString("text") ?: "Time to check in."
         )
         return Result.success()

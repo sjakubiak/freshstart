@@ -7,11 +7,11 @@ plugins {
 val buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
 
 android {
-    namespace = "com.weightcoach.app"
+    namespace = "com.freshstart.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.weightcoach.app"
+        applicationId = "com.freshstart.app"
         minSdk = 26
         targetSdk = 35
         versionCode = buildNumber
@@ -22,10 +22,10 @@ android {
     // without wiping your data. Fine for a personal app that isn't on the Play Store.
     signingConfigs {
         create("release") {
-            storeFile = file("weightcoach.keystore")
-            storePassword = "weightcoach"
-            keyAlias = "weightcoach"
-            keyPassword = "weightcoach"
+            storeFile = file("freshstart.keystore")
+            storePassword = "freshstart"
+            keyAlias = "freshstart"
+            keyPassword = "freshstart"
         }
     }
 

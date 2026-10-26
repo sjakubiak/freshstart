@@ -1,4 +1,4 @@
-package com.weightcoach.app.ui
+package com.freshstart.app.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -42,12 +42,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.weightcoach.app.data.AppStore
-import com.weightcoach.app.data.FoodColor
-import com.weightcoach.app.data.FoodDatabase
-import com.weightcoach.app.data.FoodEntry
-import com.weightcoach.app.data.FoodItem
-import com.weightcoach.app.data.Meal
+import com.freshstart.app.data.AppStore
+import com.freshstart.app.data.FoodColor
+import com.freshstart.app.data.FoodDatabase
+import com.freshstart.app.data.FoodEntry
+import com.freshstart.app.data.FoodItem
+import com.freshstart.app.data.Meal
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalLayoutApi::class)
