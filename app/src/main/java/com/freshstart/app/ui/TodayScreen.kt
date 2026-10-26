@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.freshstart.app.data.AppStore
 import com.freshstart.app.data.Calc
+import com.freshstart.app.data.DayActivity
 import com.freshstart.app.data.FoodColor
 import com.freshstart.app.data.Lessons
 import com.freshstart.app.data.Meal
@@ -57,6 +59,12 @@ fun TodayScreen(store: AppStore, onOpenLesson: (Int) -> Unit) {
     val budget = Calc.dailyBudget(profile, store.currentWeightKg)
     val eaten = entries.sumOf { it.calories }
     val remaining = budget - eaten
+
+    var activity by remember { mutableStateOf<DayActivity?>(null) }
+    LaunchedEffect(dateText, store.healthOn) {
+        activity = null
+        if (store.healthOn) activity = runCatching { store.health.activityOn(date) }.getOrNull()
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -88,6 +96,23 @@ fun TodayScreen(store: AppStore, onOpenLesson: (Int) -> Unit) {
         }
 
         item { BudgetCard(budget, eaten, remaining, store.loggingStreak(today)) }
+
+        activity?.let { a ->
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Steps", style = MaterialTheme.typography.labelMedium)
+                            Text("👟 ${"%,d".format(a.steps)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        }
+                        Column(Modifier.weight(1f)) {
+                            Text("Active calories burned", style = MaterialTheme.typography.labelMedium)
+                            Text("🔥 ${a.activeCalories}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
 
         item { ColorCard(budget, entries.groupBy { it.color }.mapValues { (_, v) -> v.sumOf { it.calories } }) }
 

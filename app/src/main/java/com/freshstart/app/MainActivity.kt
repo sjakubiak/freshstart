@@ -108,6 +108,8 @@ fun App(store: AppStore) {
         return
     }
 
+    androidx.compose.runtime.LaunchedEffect(Unit) { store.importFromHealth() }
+
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var lessonToOpen by remember { mutableStateOf<Int?>(null) }
 

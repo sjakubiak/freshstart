@@ -5,13 +5,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/** All app data, kept in one JSON file on the phone. Nothing leaves the device. */
+/**
+ * All app data, kept in one JSON file on the phone. Nothing leaves the device,
+ * except to Health Connect (also on the phone) when the user turns that on.
+ */
 class AppStore(context: Context) {
     private val file = File(context.filesDir, "freshstart.json")
+    val health = HealthSync(context.applicationContext)
+    private val scope = MainScope()
+
+    /** Whether weigh-ins and meals are shared with Health Connect. */
+    var healthOn by mutableStateOf(false)
+        private set
 
     var profile by mutableStateOf<Profile?>(null)
         private set
@@ -41,11 +52,13 @@ class AppStore(context: Context) {
     fun addFood(entry: FoodEntry) {
         foods.add(entry)
         save()
+        sync { writeFood(entry) }
     }
 
     fun removeFood(id: Long) {
         foods.removeAll { it.id == id }
         save()
+        sync { deleteFood(id) }
     }
 
     fun addCustomFood(item: FoodItem) {
@@ -61,15 +74,54 @@ class AppStore(context: Context) {
 
     /** One weigh-in per day; logging again replaces that day's value. */
     fun logWeight(date: String, kg: Double) {
+        putWeight(date, kg)
+        save()
+        sync { writeWeight(WeightEntry(date, kg)) }
+    }
+
+    private fun putWeight(date: String, kg: Double) {
         weights.removeAll { it.date == date }
         weights.add(WeightEntry(date, kg))
         weights.sortBy { it.date }
-        save()
     }
 
     fun removeWeight(date: String) {
         weights.removeAll { it.date == date }
         save()
+        sync { deleteWeight(date) }
+    }
+
+    /** Turns sharing on or off. Turning it on sends everything logged so far and pulls in weigh-ins. */
+    fun setHealthEnabled(on: Boolean) {
+        healthOn = on
+        save()
+        if (on) {
+            val allWeights = weights.toList()
+            val allFoods = foods.toList()
+            sync {
+                allWeights.forEach { writeWeight(it) }
+                allFoods.forEach { writeFood(it) }
+            }
+            importFromHealth()
+        }
+    }
+
+    /** Adds weigh-ins from scales and other apps for days FreshStart has no entry for. */
+    fun importFromHealth(onDone: (Int) -> Unit = {}) {
+        if (!healthOn) return
+        scope.launch {
+            val incoming = runCatching { health.readWeights() }.getOrDefault(emptyMap())
+            val known = weights.map { it.date }.toSet()
+            val added = incoming.filterKeys { it !in known }
+            added.forEach { (date, kg) -> putWeight(date, kg) }
+            if (added.isNotEmpty()) save()
+            onDone(added.size)
+        }
+    }
+
+    private fun sync(block: suspend HealthSync.() -> Unit) {
+        if (!healthOn) return
+        scope.launch { runCatching { health.block() } }
     }
 
     fun markLessonRead(index: Int, read: Boolean) {
@@ -123,6 +175,7 @@ class AppStore(context: Context) {
                     )
                 )
             }
+            healthOn = root.optBoolean("healthConnect", false)
             root.optJSONArray("lessonsRead")?.let { arr ->
                 for (i in 0 until arr.length()) lessonsRead.add(arr.getInt(i))
             }
@@ -164,6 +217,7 @@ class AppStore(context: Context) {
             }
         })
         root.put("lessonsRead", JSONArray().apply { lessonsRead.forEach { put(it) } })
+        root.put("healthConnect", healthOn)
 
         // Write to a temp file first so a crash mid-write can't corrupt the data.
         val tmp = File(file.parentFile, "freshstart.json.tmp")

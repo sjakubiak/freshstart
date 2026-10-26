@@ -1,5 +1,14 @@
 package com.freshstart.app.ui
 
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -122,6 +131,8 @@ fun SettingsScreen(store: AppStore, onRemindersChanged: (Boolean) -> Unit) {
             }
         }
 
+        HealthCard(store)
+
         Card(Modifier.fillMaxWidth()) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -136,9 +147,84 @@ fun SettingsScreen(store: AppStore, onRemindersChanged: (Boolean) -> Unit) {
 
         Text(
             "Everything you log stays on this phone. FreshStart has no account, no ads and no internet access. " +
+                "If you connect Health Connect, data is shared only with the health apps on this phone. " +
                 "It's a helper, not medical advice; check with your doctor before big diet changes.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    }
+}
+
+@Composable
+private fun HealthCard(store: AppStore) {
+    val context = LocalContext.current
+    val status = remember { store.health.status() }
+    var granted by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var message by remember { mutableStateOf<String?>(null) }
+
+    val launcher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { result ->
+        granted = result
+        if (result.isNotEmpty()) {
+            store.setHealthEnabled(true)
+            message = "Connected. Your weigh-ins and meals will now be shared."
+        } else {
+            message = "No access was given. You can allow it in Health Connect settings."
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        granted = runCatching { store.health.grantedPermissions() }.getOrDefault(emptySet())
+    }
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Health Connect", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Link with your Pixel's health apps (Fitbit, Pixel Watch, smart scales). " +
+                    "Weigh-ins come in automatically, your weigh-ins and meal calories go out, " +
+                    "and your steps show on the Today screen.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            when {
+                status == HealthConnectClient.SDK_UNAVAILABLE ->
+                    Text("Health Connect isn't available on this phone.", style = MaterialTheme.typography.bodyMedium)
+
+                status == HealthConnectClient.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED ->
+                    Button(onClick = {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata"))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        )
+                    }) { Text("Install or update Health Connect") }
+
+                store.healthOn && granted.isNotEmpty() -> {
+                    Text("✓ Connected", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = {
+                            store.importFromHealth { n ->
+                                message = if (n == 0) "Up to date. No new weigh-ins found." else "Added $n weigh-in${if (n == 1) "" else "s"}."
+                            }
+                        }) { Text("Sync now") }
+                        OutlinedButton(onClick = { launcher.launch(store.health.permissions) }) { Text("Permissions") }
+                    }
+                    TextButton(onClick = {
+                        store.setHealthEnabled(false)
+                        message = "Disconnected. Nothing new will be shared."
+                    }) { Text("Turn off sharing") }
+                }
+
+                else -> {
+                    Button(onClick = { launcher.launch(store.health.permissions) }) { Text("Connect") }
+                    TextButton(onClick = {
+                        runCatching {
+                            context.startActivity(
+                                Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            )
+                        }
+                    }) { Text("Open Health Connect settings") }
+                }
+            }
+            message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
     }
 }

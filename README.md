@@ -7,6 +7,7 @@ A free, private, Noom-style weight-loss app for Android. Everything stays on you
 - **Food log with colors**: ~100 common foods tagged green, yellow or red by calorie density, plus your own foods. Tracks calories left and your color mix (aim for 30% green, 45% yellow, 25% red).
 - **Weight tracking**: log weigh-ins and see a trend chart against your goal, BMI, and a projected goal date.
 - **Daily lessons**: 30 short lessons on habits and psychology, one highlighted each day.
+- **Health Connect**: links with your Pixel's health apps. Weigh-ins from scales/Fitbit come in, your weigh-ins and meal calories go out, and steps plus active calories show on the Today screen. Turn it on in Settings.
 - **Reminders**: optional nudges at 8:00, 12:30 and 19:30.
 
 ## Install
