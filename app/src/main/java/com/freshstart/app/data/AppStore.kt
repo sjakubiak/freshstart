@@ -31,6 +31,16 @@ class AppStore(context: Context) {
     val customFoods = mutableStateListOf<FoodItem>()
     val lessonsRead = mutableStateListOf<Int>()
 
+    /** Foods you usually have at home, used to tailor meal suggestions. */
+    val pantry = mutableStateListOf<String>()
+
+    /** Meal ideas Gemini suggested from your kitchen. */
+    val aiIdeas = mutableStateListOf<MealIdea>()
+
+    /** Your own free Gemini API key, for photo scanning. Blank means the feature is off. */
+    var geminiKey by mutableStateOf("")
+        private set
+
     init {
         load()
     }
@@ -124,6 +134,36 @@ class AppStore(context: Context) {
         scope.launch { runCatching { health.block() } }
     }
 
+    fun addPantryItems(items: Collection<String>): Int {
+        val existing = pantry.map { it.lowercase() }.toSet()
+        val fresh = items.map { it.trim().lowercase() }.filter { it.isNotBlank() && it !in existing }.distinct()
+        pantry.addAll(fresh)
+        pantry.sort()
+        if (fresh.isNotEmpty()) save()
+        return fresh.size
+    }
+
+    fun removePantryItem(item: String) {
+        pantry.remove(item)
+        save()
+    }
+
+    fun clearPantry() {
+        pantry.clear()
+        save()
+    }
+
+    fun setAiIdeas(ideas: List<MealIdea>) {
+        aiIdeas.clear()
+        aiIdeas.addAll(ideas)
+        save()
+    }
+
+    fun updateGeminiKey(key: String) {
+        geminiKey = key.trim()
+        save()
+    }
+
     fun markLessonRead(index: Int, read: Boolean) {
         lessonsRead.remove(index)
         if (read) lessonsRead.add(index)
@@ -176,6 +216,24 @@ class AppStore(context: Context) {
                 )
             }
             healthOn = root.optBoolean("healthConnect", false)
+            geminiKey = root.optString("geminiKey", "")
+            root.optJSONArray("pantry")?.let { arr ->
+                for (i in 0 until arr.length()) pantry.add(arr.getString(i))
+            }
+            root.optJSONArray("aiIdeas")?.forEachObject { o ->
+                val ing = o.optJSONArray("ingredients")
+                aiIdeas.add(
+                    MealIdea(
+                        name = o.getString("name"),
+                        meal = Meal.valueOf(o.getString("meal")),
+                        calories = o.getInt("calories"),
+                        color = FoodColor.valueOf(o.getString("color")),
+                        ingredients = if (ing == null) emptyList() else (0 until ing.length()).map { ing.getString(it) },
+                        howTo = o.optString("howTo", ""),
+                        fromAi = true
+                    )
+                )
+            }
             root.optJSONArray("lessonsRead")?.let { arr ->
                 for (i in 0 until arr.length()) lessonsRead.add(arr.getInt(i))
             }
@@ -218,6 +276,20 @@ class AppStore(context: Context) {
         })
         root.put("lessonsRead", JSONArray().apply { lessonsRead.forEach { put(it) } })
         root.put("healthConnect", healthOn)
+        root.put("geminiKey", geminiKey)
+        root.put("pantry", JSONArray().apply { pantry.forEach { put(it) } })
+        root.put("aiIdeas", JSONArray().apply {
+            aiIdeas.forEach { idea ->
+                put(JSONObject().apply {
+                    put("name", idea.name)
+                    put("meal", idea.meal.name)
+                    put("calories", idea.calories)
+                    put("color", idea.color.name)
+                    put("ingredients", JSONArray().apply { idea.ingredients.forEach { put(it) } })
+                    put("howTo", idea.howTo)
+                })
+            }
+        })
 
         // Write to a temp file first so a crash mid-write can't corrupt the data.
         val tmp = File(file.parentFile, "freshstart.json.tmp")

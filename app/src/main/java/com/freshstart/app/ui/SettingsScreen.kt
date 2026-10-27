@@ -146,8 +146,9 @@ fun SettingsScreen(store: AppStore, onRemindersChanged: (Boolean) -> Unit) {
         }
 
         Text(
-            "Everything you log stays on this phone. FreshStart has no account, no ads and no internet access. " +
+            "Everything you log stays on this phone. FreshStart has no account and no ads. " +
                 "If you connect Health Connect, data is shared only with the health apps on this phone. " +
+                "If you add a Gemini key, only the kitchen photos you scan and your kitchen list (for meal ideas) are sent to Google. " +
                 "It's a helper, not medical advice; check with your doctor before big diet changes.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant

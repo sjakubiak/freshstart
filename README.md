@@ -5,6 +5,8 @@ A free, private, Noom-style weight-loss app for Android. Everything stays on you
 ## Features
 - **Personal plan**: enter your age, height, weight, goal and pace; get a daily calorie budget (Mifflin-St Jeor formula with a safe minimum).
 - **Food log with colors**: ~100 common foods tagged green, yellow or red by calorie density, plus your own foods. Tracks calories left and your color mix (aim for 30% green, 45% yellow, 25% red).
+- **Meal plan**: suggests breakfast, lunch, dinner and a snack that fit your budget; tap "I ate this" to log with no typing, or "Swap" for another idea.
+- **My kitchen**: list the foods you usually have (or scan a photo of your fridge with your own free Gemini key) and the plan favors meals you can make. With a key, Gemini can also invent meals from your kitchen.
 - **Weight tracking**: log weigh-ins and see a trend chart against your goal, BMI, and a projected goal date.
 - **Daily lessons**: 30 short lessons on habits and psychology, one highlighted each day.
 - **Health Connect**: links with your Pixel's health apps. Weigh-ins from scales/Fitbit come in, your weigh-ins and meal calories go out, and steps plus active calories show on the Today screen. Turn it on in Settings.

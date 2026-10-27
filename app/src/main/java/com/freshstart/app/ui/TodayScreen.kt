@@ -48,7 +48,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun TodayScreen(store: AppStore, onOpenLesson: (Int) -> Unit) {
+fun TodayScreen(store: AppStore, onOpenLesson: (Int) -> Unit, onOpenPlan: () -> Unit) {
     val profile = store.profile ?: return
     val today = LocalDate.now()
     var dateText by rememberSaveable { mutableStateOf(today.toString()) }
@@ -96,6 +96,23 @@ fun TodayScreen(store: AppStore, onOpenLesson: (Int) -> Unit) {
         }
 
         item { BudgetCard(budget, eaten, remaining, store.loggingStreak(today)) }
+
+        if (date == today) {
+            item {
+                Card(
+                    Modifier.fillMaxWidth().clickable { onOpenPlan() },
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Not sure what to eat?", style = MaterialTheme.typography.titleMedium)
+                            Text("See today's meal plan and log meals with one tap.", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                    }
+                }
+            }
+        }
 
         activity?.let { a ->
             item {

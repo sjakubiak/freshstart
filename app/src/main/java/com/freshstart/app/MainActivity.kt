@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import com.freshstart.app.data.AppStore
 import com.freshstart.app.reminders.Reminders
 import com.freshstart.app.ui.LearnScreen
+import com.freshstart.app.ui.PlanScreen
 import com.freshstart.app.ui.ProfileForm
 import com.freshstart.app.ui.ProgressScreen
 import com.freshstart.app.ui.SettingsScreen
@@ -64,6 +66,7 @@ private data class Tab(val label: String, val icon: androidx.compose.ui.graphics
 
 private val tabs = listOf(
     Tab("Today", Icons.Filled.Home),
+    Tab("Plan", Icons.AutoMirrored.Filled.List),
     Tab("Progress", Icons.Filled.DateRange),
     Tab("Learn", Icons.Filled.Info),
     Tab("Settings", Icons.Filled.Settings)
@@ -121,7 +124,7 @@ fun App(store: AppStore) {
                         selected = tab == i,
                         onClick = {
                             tab = i
-                            if (i != 2) lessonToOpen = null
+                            if (i != 3) lessonToOpen = null
                         },
                         icon = { Icon(t.icon, contentDescription = null) },
                         label = { Text(t.label) }
@@ -134,10 +137,11 @@ fun App(store: AppStore) {
             when (tab) {
                 0 -> TodayScreen(store, onOpenLesson = {
                     lessonToOpen = it
-                    tab = 2
-                })
-                1 -> ProgressScreen(store)
-                2 -> LearnScreen(store, lessonToOpen)
+                    tab = 3
+                }, onOpenPlan = { tab = 1 })
+                1 -> PlanScreen(store)
+                2 -> ProgressScreen(store)
+                3 -> LearnScreen(store, lessonToOpen)
                 else -> SettingsScreen(store, onRemindersChanged = { applyReminders(it) })
             }
         }
