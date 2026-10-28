@@ -34,7 +34,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import com.freshstart.app.data.Account
 import com.freshstart.app.data.AppStore
+import com.freshstart.app.ui.SignInScreen
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import com.freshstart.app.reminders.Reminders
 import com.freshstart.app.ui.LearnScreen
 import com.freshstart.app.ui.PlanScreen
@@ -49,16 +57,22 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val store = storeFor(this)
+        val account = accountFor(this, store)
         setContent {
-            FreshStartTheme { App(store) }
+            FreshStartTheme { App(store, account) }
         }
     }
 
     companion object {
         private var store: AppStore? = null
 
+        private var account: Account? = null
+
         fun storeFor(activity: ComponentActivity): AppStore =
             store ?: AppStore(activity.applicationContext).also { store = it }
+
+        fun accountFor(activity: ComponentActivity, store: AppStore): Account =
+            account ?: Account(activity.applicationContext, store).also { account = it }
     }
 }
 
@@ -73,7 +87,7 @@ private val tabs = listOf(
 )
 
 @Composable
-fun App(store: AppStore) {
+fun App(store: AppStore, account: Account) {
     val context = LocalContext.current
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -84,6 +98,33 @@ fun App(store: AppStore) {
         } else {
             Reminders.cancel(context)
         }
+    }
+
+    val user = account.user
+    androidx.compose.runtime.LaunchedEffect(user?.uid) {
+        if (user != null) account.startSync(user) else account.stopSync()
+    }
+
+    if (account.configured && user == null && !store.useWithoutAccount) {
+        Scaffold { padding ->
+            SignInScreen(account, onSkip = { store.chooseWithoutAccount(true) }, modifier = Modifier.padding(padding))
+        }
+        return
+    }
+
+    if (user != null && !account.ready) {
+        Scaffold { padding ->
+            Column(
+                Modifier.fillMaxSize().padding(padding),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+                Spacer(Modifier.height(12.dp))
+                Text("Loading your data…")
+            }
+        }
+        return
     }
 
     val profile = store.profile
@@ -142,7 +183,7 @@ fun App(store: AppStore) {
                 1 -> PlanScreen(store)
                 2 -> ProgressScreen(store)
                 3 -> LearnScreen(store, lessonToOpen)
-                else -> SettingsScreen(store, onRemindersChanged = { applyReminders(it) })
+                else -> SettingsScreen(store, account, onRemindersChanged = { applyReminders(it) })
             }
         }
     }

@@ -36,11 +36,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.freshstart.app.data.Account
+import kotlinx.coroutines.launch
 import com.freshstart.app.data.AppStore
 import com.freshstart.app.data.Calc
 
 @Composable
-fun SettingsScreen(store: AppStore, onRemindersChanged: (Boolean) -> Unit) {
+fun SettingsScreen(store: AppStore, account: Account, onRemindersChanged: (Boolean) -> Unit) {
     val profile = store.profile ?: return
     var editing by rememberSaveable { mutableStateOf(false) }
 
@@ -75,6 +77,8 @@ fun SettingsScreen(store: AppStore, onRemindersChanged: (Boolean) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+
+        if (account.configured) AccountCard(store, account)
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -146,7 +150,7 @@ fun SettingsScreen(store: AppStore, onRemindersChanged: (Boolean) -> Unit) {
         }
 
         Text(
-            "Everything you log stays on this phone. FreshStart has no account and no ads. " +
+            "Without an account, everything stays on this phone. With an account, your data is backed up privately to your account. FreshStart has no ads and never sells data. " +
                 "If you connect Health Connect, data is shared only with the health apps on this phone. " +
                 "If you add a Gemini key, only the kitchen photos you scan and your kitchen list (for meal ideas) are sent to Google. " +
                 "It's a helper, not medical advice; check with your doctor before big diet changes.",
@@ -227,5 +231,66 @@ private fun HealthCard(store: AppStore) {
             }
             message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
+    }
+}
+
+@Composable
+private fun AccountCard(store: AppStore, account: Account) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var confirmDelete by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val user = account.user
+
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Account", style = MaterialTheme.typography.titleMedium)
+            if (user == null) {
+                Text(
+                    "You're using FreshStart without an account, so your data is only on this phone.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Button(onClick = { store.chooseWithoutAccount(false) }) { Text("Sign in to back up") }
+            } else {
+                Text("Signed in as ${user.email ?: "your Google account"}", style = MaterialTheme.typography.bodyMedium)
+                account.lastSyncMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(enabled = !busy, onClick = {
+                        busy = true
+                        scope.launch { account.signOut(); busy = false }
+                    }) { Text("Sign out") }
+                    TextButton(enabled = !busy, onClick = { confirmDelete = true }) {
+                        Text("Delete account", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                Text(
+                    "Signing out removes your data from this phone. It stays safe in your account.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+
+    if (confirmDelete) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete your account?") },
+            text = { Text("This permanently deletes your account and everything you've logged, on this phone and in the cloud. It can't be undone.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    busy = true
+                    error = null
+                    scope.launch {
+                        runCatching { account.deleteAccount() }
+                            .onFailure { error = it.message ?: "Couldn't delete the account. Please try again." }
+                        busy = false
+                    }
+                }) { Text("Delete everything", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } }
+        )
     }
 }

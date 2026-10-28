@@ -12,8 +12,8 @@ import org.json.JSONObject
 import java.io.File
 
 /**
- * All app data, kept in one JSON file on the phone. Nothing leaves the device,
- * except to Health Connect (also on the phone) when the user turns that on.
+ * All app data, kept in one JSON file on the phone. When signed in, [CloudSync]
+ * also backs it up to the user's account. Health Connect sharing is opt-in.
  */
 class AppStore(context: Context) {
     private val file = File(context.filesDir, "freshstart.json")
@@ -39,6 +39,17 @@ class AppStore(context: Context) {
 
     /** Your own free Gemini API key, for photo scanning. Blank means the feature is off. */
     var geminiKey by mutableStateOf("")
+        private set
+
+    /** Called after every change, so the account backup can upload it. */
+    var onChanged: (() -> Unit)? = null
+
+    /** When the data last changed, in milliseconds. Used to decide which copy is newer. */
+    var updatedAt = 0L
+        private set
+
+    /** The user chose to skip signing in and keep data only on this phone. */
+    var useWithoutAccount by mutableStateOf(false)
         private set
 
     init {
@@ -185,7 +196,26 @@ class AppStore(context: Context) {
     private fun load() {
         if (!file.exists()) return
         try {
-            val root = JSONObject(file.readText())
+            applyJson(JSONObject(file.readText()))
+        } catch (e: Exception) {
+            // Keep a copy of an unreadable file rather than silently losing it.
+            runCatching {
+                file.copyTo(File(file.parentFile, "freshstart-corrupt-${System.currentTimeMillis()}.json"), overwrite = true)
+            }
+        }
+    }
+
+    private fun applyJson(root: JSONObject) {
+        profile = null
+        foods.clear()
+        weights.clear()
+        customFoods.clear()
+        pantry.clear()
+        aiIdeas.clear()
+        lessonsRead.clear()
+        updatedAt = root.optLong("updatedAt", 0L)
+        useWithoutAccount = root.optBoolean("useWithoutAccount", false)
+        run {
             root.optJSONObject("profile")?.let { profile = profileFrom(it) }
             root.optJSONArray("foods")?.forEachObject { o ->
                 foods.add(
@@ -237,16 +267,60 @@ class AppStore(context: Context) {
             root.optJSONArray("lessonsRead")?.let { arr ->
                 for (i in 0 until arr.length()) lessonsRead.add(arr.getInt(i))
             }
-        } catch (e: Exception) {
-            // Keep a copy of an unreadable file rather than silently losing it.
-            runCatching {
-                file.copyTo(File(file.parentFile, "freshstart-corrupt-${System.currentTimeMillis()}.json"), overwrite = true)
-            }
         }
     }
 
+    fun chooseWithoutAccount(value: Boolean) {
+        useWithoutAccount = value
+        writeFile(toJson())
+    }
+
+    /** Everything worth backing up. Phone-specific settings and the Gemini key stay on the phone. */
+    fun toCloudJson(): JSONObject = toJson().apply {
+        remove("geminiKey")
+        remove("healthConnect")
+        remove("useWithoutAccount")
+    }
+
+    /** Replaces local data with the account's copy, keeping phone-specific settings. */
+    fun replaceFromCloud(root: JSONObject) {
+        val key = geminiKey
+        val health = healthOn
+        applyJson(root)
+        geminiKey = key
+        healthOn = health
+        useWithoutAccount = false
+        writeFile(toJson())
+    }
+
+    /** Wipes everything on this phone, for signing out or after deleting the account. */
+    fun clearAll() {
+        applyJson(JSONObject())
+        geminiKey = ""
+        healthOn = false
+        file.delete()
+    }
+
     private fun save() {
+        updatedAt = System.currentTimeMillis()
+        writeFile(toJson())
+        onChanged?.invoke()
+    }
+
+    private fun writeFile(root: JSONObject) {
+        // Write to a temp file first so a crash mid-write can't corrupt the data.
+        val tmp = File(file.parentFile, "freshstart.json.tmp")
+        tmp.writeText(root.toString())
+        if (!tmp.renameTo(file)) {
+            file.writeText(root.toString())
+            tmp.delete()
+        }
+    }
+
+    private fun toJson(): JSONObject {
         val root = JSONObject()
+        root.put("updatedAt", updatedAt)
+        root.put("useWithoutAccount", useWithoutAccount)
         profile?.let { root.put("profile", profileTo(it)) }
         root.put("foods", JSONArray().apply {
             foods.forEach { e ->
@@ -290,14 +364,7 @@ class AppStore(context: Context) {
                 })
             }
         })
-
-        // Write to a temp file first so a crash mid-write can't corrupt the data.
-        val tmp = File(file.parentFile, "freshstart.json.tmp")
-        tmp.writeText(root.toString())
-        if (!tmp.renameTo(file)) {
-            file.writeText(root.toString())
-            tmp.delete()
-        }
+        return root
     }
 
     private fun profileTo(p: Profile) = JSONObject().apply {
