@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "217814477285",
+    "project_id": "freshstart-5696d",
+    "storage_bucket": "freshstart-5696d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:217814477285:android:36b56d9ab086f04923270c",
+        "android_client_info": {
+          "package_name": "com.freshstart.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "217814477285-t75rd2o7cm0jttsj9i0hiase89f3bc3l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD24GgJ54MJGzLfzFziObifl0c-4F4WUe4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "217814477285-t75rd2o7cm0jttsj9i0hiase89f3bc3l.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:217814477285:android:85ecc0976372863a23270c",
+        "android_client_info": {
+          "package_name": "com.sjakubiak.freshstart"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "217814477285-t75rd2o7cm0jttsj9i0hiase89f3bc3l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD24GgJ54MJGzLfzFziObifl0c-4F4WUe4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "217814477285-t75rd2o7cm0jttsj9i0hiase89f3bc3l.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
