@@ -12,6 +12,8 @@ A free, private, Noom-style weight-loss app for Android. Everything stays on you
 - **Health Connect**: links with your Pixel's health apps. Weigh-ins from scales/Fitbit come in, your weigh-ins and meal calories go out, and steps plus active calories show on the Today screen. Turn it on in Settings.
 - **Reminders**: optional nudges at 8:00, 12:30 and 19:30.
 
+- **Accounts and backup**: optional sign-in with Google or email; data is backed up to Firebase (Cloud Firestore) and restored on a new phone. Settings has sign out and account deletion.
+
 ## Install
 Every push to `main` builds a signed APK on GitHub Actions and publishes it as a release.
 On your phone, open the latest release, download `FreshStart.apk`, and open it. Android will ask you to allow installs from your browser or Files app the first time.
@@ -20,3 +22,10 @@ Updates install over the old version and keep your data, because every build is 
 
 ## Build locally
 Requires the Android SDK (API 35) and JDK 17: `./gradlew assembleRelease`.
+
+## Google Play build
+`./gradlew bundleRelease -Pstore=true` builds the Play version (app ID `com.sjakubiak.freshstart`), signed with the private upload key.
+CI builds it automatically when the `UPLOAD_KEYSTORE_BASE64` and `UPLOAD_KEYSTORE_PASSWORD` repository secrets are set, and attaches `FreshStart-play.aab` to the run's artifacts.
+
+Firebase is enabled by adding `app/google-services.json` (registered for both `com.freshstart.app` and `com.sjakubiak.freshstart`). Firestore security rules are in `firestore.rules`.
+The privacy policy and account deletion pages are in `docs/`, published with GitHub Pages.

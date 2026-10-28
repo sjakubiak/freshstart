@@ -4,16 +4,25 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Firebase (sign-in and backup) is switched on once app/google-services.json is added.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 val buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
+
+// `-Pstore=true` builds the Google Play version: its own app ID, signed with the private
+// upload key from GitHub secrets. Without it you get the sideload APK as before.
+val storeBuild = findProperty("store") == "true"
 
 android {
     namespace = "com.freshstart.app"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.freshstart.app"
+        applicationId = if (storeBuild) "com.sjakubiak.freshstart" else "com.freshstart.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = buildNumber
         versionName = "1.0.$buildNumber"
     }
@@ -27,12 +36,18 @@ android {
             keyAlias = "freshstart"
             keyPassword = "freshstart"
         }
+        create("upload") {
+            storeFile = file(System.getenv("UPLOAD_KEYSTORE_PATH") ?: "upload.keystore")
+            storePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
+            keyAlias = "upload"
+            keyPassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName(if (storeBuild) "upload" else "release")
         }
         debug {
             signingConfig = signingConfigs.getByName("release")
@@ -66,4 +81,12 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.10.0")
     implementation("androidx.health.connect:connect-client:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 }
