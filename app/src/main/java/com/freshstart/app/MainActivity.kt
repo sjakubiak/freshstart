@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -44,7 +45,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.freshstart.app.reminders.Reminders
+import com.freshstart.app.ui.HeroScreen
 import com.freshstart.app.ui.LearnScreen
+import com.freshstart.app.ui.LevelUpDialog
 import com.freshstart.app.ui.PlanScreen
 import com.freshstart.app.ui.ProfileForm
 import com.freshstart.app.ui.ProgressScreen
@@ -76,11 +79,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private const val HERO_TAB = 2
+private const val LEARN_TAB = 4
+
 private data class Tab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
 
 private val tabs = listOf(
     Tab("Today", Icons.Filled.Home),
     Tab("Plan", Icons.AutoMirrored.Filled.List),
+    Tab("Hero", Icons.Filled.Star),
     Tab("Progress", Icons.Filled.DateRange),
     Tab("Learn", Icons.Filled.Info),
     Tab("Settings", Icons.Filled.Settings)
@@ -152,7 +159,11 @@ fun App(store: AppStore, account: Account) {
         return
     }
 
-    androidx.compose.runtime.LaunchedEffect(Unit) { store.importFromHealth() }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        store.importFromHealth()
+        store.refreshSteps(java.time.LocalDate.now())
+    }
+    LevelUpDialog(store)
 
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var lessonToOpen by remember { mutableStateOf<Int?>(null) }
@@ -165,7 +176,7 @@ fun App(store: AppStore, account: Account) {
                         selected = tab == i,
                         onClick = {
                             tab = i
-                            if (i != 3) lessonToOpen = null
+                            if (i != LEARN_TAB) lessonToOpen = null
                         },
                         icon = { Icon(t.icon, contentDescription = null) },
                         label = { Text(t.label) }
@@ -178,11 +189,12 @@ fun App(store: AppStore, account: Account) {
             when (tab) {
                 0 -> TodayScreen(store, onOpenLesson = {
                     lessonToOpen = it
-                    tab = 3
-                }, onOpenPlan = { tab = 1 })
+                    tab = LEARN_TAB
+                }, onOpenPlan = { tab = 1 }, onOpenHero = { tab = HERO_TAB })
                 1 -> PlanScreen(store)
-                2 -> ProgressScreen(store)
-                3 -> LearnScreen(store, lessonToOpen)
+                HERO_TAB -> HeroScreen(store)
+                3 -> ProgressScreen(store)
+                LEARN_TAB -> LearnScreen(store, lessonToOpen)
                 else -> SettingsScreen(store, account, onRemindersChanged = { applyReminders(it) })
             }
         }
