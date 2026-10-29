@@ -91,7 +91,7 @@ fun HeroScreen(store: AppStore) {
             scope.launch {
                 val encoded = withContext(Dispatchers.IO) { AvatarPhoto.encode(context, uri) }
                 photoError = encoded == null
-                if (encoded != null) store.setAvatarPhoto(encoded)
+                if (encoded != null) store.updateAvatarPhoto(encoded)
             }
         }
     }
@@ -118,7 +118,7 @@ fun HeroScreen(store: AppStore) {
                             Text(if (store.avatarPhoto.isEmpty()) "Use my photo" else "Change photo")
                         }
                         if (store.avatarPhoto.isNotEmpty()) {
-                            TextButton(onClick = { store.setAvatarPhoto("") }) { Text("Use ${hero.emoji} instead") }
+                            TextButton(onClick = { store.updateAvatarPhoto("") }) { Text("Use ${hero.emoji} instead") }
                         }
                     }
                     if (photoError) {

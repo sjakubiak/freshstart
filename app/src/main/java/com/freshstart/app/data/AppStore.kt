@@ -199,7 +199,7 @@ class AppStore(context: Context) {
         save()
     }
 
-    fun setAvatarPhoto(base64: String) {
+    fun updateAvatarPhoto(base64: String) {
         avatarPhoto = base64
         save()
     }
