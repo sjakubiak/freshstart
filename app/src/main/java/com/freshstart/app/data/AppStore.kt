@@ -3,6 +3,7 @@ package com.freshstart.app.data
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.MainScope
@@ -40,6 +41,20 @@ class AppStore(context: Context) {
     /** Your own free Gemini API key, for photo scanning. Blank means the feature is off. */
     var geminiKey by mutableStateOf("")
         private set
+
+    /** The character the user picked for the game, or null before they've chosen. */
+    var hero by mutableStateOf<HeroClass?>(null)
+        private set
+
+    /** Gear id worn in each slot. */
+    val equipped = mutableStateMapOf<GearSlot, String>()
+
+    /** Highest level reached. Gear unlocked on the way stays unlocked even if XP later drops. */
+    var peakLevel by mutableStateOf(1)
+        private set
+
+    /** Steps per day from Health Connect, kept so past days still earn XP and back up with the rest. */
+    val stepsByDay = mutableStateMapOf<String, Long>()
 
     /** Called after every change, so the account backup can upload it. */
     var onChanged: (() -> Unit)? = null
@@ -175,6 +190,45 @@ class AppStore(context: Context) {
         save()
     }
 
+    fun chooseHero(h: HeroClass) {
+        hero = h
+        save()
+    }
+
+    /** Wears [gear], or takes it off if it's already worn. */
+    fun toggleGear(gear: Gear) {
+        if (equipped[gear.slot] == gear.id) equipped.remove(gear.slot) else equipped[gear.slot] = gear.id
+        save()
+    }
+
+    fun reachLevel(level: Int) {
+        if (level <= peakLevel) return
+        peakLevel = level
+        save()
+    }
+
+    fun gameProgress(today: java.time.LocalDate): GameProgress? {
+        val p = profile ?: return null
+        return Game.progress(p, foods, weights, stepsByDay, hero, today)
+    }
+
+    /** Pulls the last two weeks of steps from Health Connect so they count towards XP. */
+    fun refreshSteps(today: java.time.LocalDate) {
+        if (!healthOn) return
+        scope.launch {
+            var changed = false
+            for (i in 0..13) {
+                val day = today.minusDays(i.toLong())
+                val steps = runCatching { health.activityOn(day)?.steps }.getOrNull() ?: continue
+                if (steps > 0 && stepsByDay[day.toString()] != steps) {
+                    stepsByDay[day.toString()] = steps
+                    changed = true
+                }
+            }
+            if (changed) save()
+        }
+    }
+
     fun markLessonRead(index: Int, read: Boolean) {
         lessonsRead.remove(index)
         if (read) lessonsRead.add(index)
@@ -213,6 +267,10 @@ class AppStore(context: Context) {
         pantry.clear()
         aiIdeas.clear()
         lessonsRead.clear()
+        hero = null
+        equipped.clear()
+        peakLevel = 1
+        stepsByDay.clear()
         updatedAt = root.optLong("updatedAt", 0L)
         useWithoutAccount = root.optBoolean("useWithoutAccount", false)
         run {
@@ -266,6 +324,19 @@ class AppStore(context: Context) {
             }
             root.optJSONArray("lessonsRead")?.let { arr ->
                 for (i in 0 until arr.length()) lessonsRead.add(arr.getInt(i))
+            }
+            root.optJSONObject("game")?.let { g ->
+                hero = HeroClass.entries.firstOrNull { it.name == g.optString("hero") }
+                peakLevel = g.optInt("peakLevel", 1)
+                g.optJSONObject("equipped")?.let { eq ->
+                    GearSlot.entries.forEach { slot ->
+                        val id = eq.optString(slot.name, "")
+                        if (Game.gearById(id)?.slot == slot) equipped[slot] = id
+                    }
+                }
+                g.optJSONObject("steps")?.let { st ->
+                    st.keys().forEach { day -> stepsByDay[day] = st.getLong(day) }
+                }
             }
         }
     }
@@ -349,6 +420,12 @@ class AppStore(context: Context) {
             }
         })
         root.put("lessonsRead", JSONArray().apply { lessonsRead.forEach { put(it) } })
+        root.put("game", JSONObject().apply {
+            hero?.let { put("hero", it.name) }
+            put("peakLevel", peakLevel)
+            put("equipped", JSONObject().apply { equipped.forEach { (slot, id) -> put(slot.name, id) } })
+            put("steps", JSONObject().apply { stepsByDay.toSortedMap().forEach { (day, n) -> put(day, n) } })
+        })
         root.put("healthConnect", healthOn)
         root.put("geminiKey", geminiKey)
         root.put("pantry", JSONArray().apply { pantry.forEach { put(it) } })

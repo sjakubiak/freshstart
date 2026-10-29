@@ -48,7 +48,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun TodayScreen(store: AppStore, onOpenLesson: (Int) -> Unit, onOpenPlan: () -> Unit) {
+fun TodayScreen(store: AppStore, onOpenLesson: (Int) -> Unit, onOpenPlan: () -> Unit, onOpenHero: () -> Unit) {
     val profile = store.profile ?: return
     val today = LocalDate.now()
     var dateText by rememberSaveable { mutableStateOf(today.toString()) }
@@ -64,6 +64,7 @@ fun TodayScreen(store: AppStore, onOpenLesson: (Int) -> Unit, onOpenPlan: () -> 
     LaunchedEffect(dateText, store.healthOn) {
         activity = null
         if (store.healthOn) activity = runCatching { store.health.activityOn(date) }.getOrNull()
+        if (store.healthOn && date == today) store.refreshSteps(today)
     }
 
     LazyColumn(
@@ -96,6 +97,8 @@ fun TodayScreen(store: AppStore, onOpenLesson: (Int) -> Unit, onOpenPlan: () -> 
         }
 
         item { BudgetCard(budget, eaten, remaining, store.loggingStreak(today)) }
+
+        if (date == today) item { HeroSummaryCard(store, onOpenHero) }
 
         if (date == today) {
             item {

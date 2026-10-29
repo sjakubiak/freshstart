@@ -9,6 +9,7 @@ A free, private, Noom-style weight-loss app for Android. Everything stays on you
 - **My kitchen**: list the foods you usually have (or scan a photo of your fridge with your own free Gemini key) and the plan favors meals you can make. With a key, Gemini can also invent meals from your kitchen.
 - **Weight tracking**: log weigh-ins and see a trend chart against your goal, BMI, and a projected goal date.
 - **Daily lessons**: 30 short lessons on habits and psychology, one highlighted each day.
+- **Hero game**: pick one of six heroes who levels up from what you already log. Green foods, days within budget, steps and weigh-ins earn XP; red foods and days well over budget cost XP. New hats, outfits, held items, pets and auras unlock as you level up, and your hero backs up with the rest of your data.
 - **Health Connect**: links with your Pixel's health apps. Weigh-ins from scales/Fitbit come in, your weigh-ins and meal calories go out, and steps plus active calories show on the Today screen. Turn it on in Settings.
 - **Reminders**: optional nudges at 8:00, 12:30 and 19:30.
 
