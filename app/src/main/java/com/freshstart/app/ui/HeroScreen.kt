@@ -1,9 +1,12 @@
 package com.freshstart.app.ui
 
-import androidx.compose.foundation.BorderStroke
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,13 +16,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -27,7 +29,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,29 +37,33 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.freshstart.app.data.AppStore
+import com.freshstart.app.data.AvatarPhoto
+import com.freshstart.app.data.Badge
 import com.freshstart.app.data.DayXp
 import com.freshstart.app.data.Game
 import com.freshstart.app.data.GameProgress
-import com.freshstart.app.data.Gear
-import com.freshstart.app.data.GearSlot
 import com.freshstart.app.data.HeroClass
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -76,7 +82,19 @@ fun HeroScreen(store: AppStore) {
         return
     }
     val progress = store.gameProgress(today) ?: return
-    val unlockedLevel = maxOf(store.peakLevel, progress.level)
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var photoError by remember { mutableStateOf(false) }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val encoded = withContext(Dispatchers.IO) { AvatarPhoto.encode(context, uri) }
+                photoError = encoded == null
+                if (encoded != null) store.updateAvatarPhoto(encoded)
+            }
+        }
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -92,8 +110,20 @@ fun HeroScreen(store: AppStore) {
                     Modifier.fillMaxWidth().padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    HeroAvatar(hero, store.equipped, size = 200.dp)
-                    Spacer(Modifier.height(8.dp))
+                    HeroAvatar(store, size = 160.dp, level = progress.level)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = {
+                            pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        }) {
+                            Text(if (store.avatarPhoto.isEmpty()) "Use my photo" else "Change photo")
+                        }
+                        if (store.avatarPhoto.isNotEmpty()) {
+                            TextButton(onClick = { store.updateAvatarPhoto("") }) { Text("Use ${hero.emoji} instead") }
+                        }
+                    }
+                    if (photoError) {
+                        Text("Couldn't read that photo. Try another one.", style = MaterialTheme.typography.bodySmall, color = FoodRed)
+                    }
                     val name = store.profile?.name?.takeIf { it.isNotBlank() }
                     Text(
                         if (name != null) "$name the ${hero.label}" else hero.label,
@@ -120,40 +150,13 @@ fun HeroScreen(store: AppStore) {
 
         item { WeekCard(progress, today) }
 
-        item {
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Gear and outfits", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "New items unlock as you level up. Tap one to wear it, tap again to take it off.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    GearSlot.entries.forEach { slot ->
-                        Text(slot.label, style = MaterialTheme.typography.labelLarge)
-                        Row(
-                            Modifier.horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Game.gear.filter { it.slot == slot }.forEach { g ->
-                                GearTile(
-                                    gear = g,
-                                    unlocked = g.level <= unlockedLevel,
-                                    worn = store.equipped[slot] == g.id,
-                                    onClick = { store.toggleGear(g) }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        item { BadgesCard(store.badges) }
 
         item { RulesCard() }
 
         item {
             TextButton(onClick = { changingHero = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("Change hero (keeps your XP and gear)")
+                Text("Change hero (keeps your XP and badges)")
             }
         }
     }
@@ -172,98 +175,113 @@ private fun XpBar(progress: GameProgress, modifier: Modifier = Modifier) {
 }
 
 /**
- * The hero drawn from emoji: aura behind, outfit as the body under the head, headgear on top
- * of the head, an item in hand and a pet at their feet. Positions are in tenths of [size],
- * and emoji are sized in dp so the phone's font size setting can't knock them out of place.
+ * The user's photo in a circle, or their hero's emoji if they haven't picked one,
+ * with their level in a small badge at the bottom right.
  */
 @Composable
-fun HeroAvatar(hero: HeroClass, equipped: Map<GearSlot, String>, size: Dp) {
-    val aura = Game.gearById(equipped[GearSlot.AURA])?.colors?.map { Color(it) }
-    val background = if (aura != null && aura.size >= 2) {
-        Brush.radialGradient(aura)
-    } else {
-        Brush.radialGradient(listOf(Color.White, MaterialTheme.colorScheme.surfaceVariant))
+fun HeroAvatar(store: AppStore, size: Dp, level: Int? = null) {
+    val hero = store.hero ?: return
+    val photo = remember(store.avatarPhoto) {
+        store.avatarPhoto.takeIf { it.isNotEmpty() }?.let { AvatarPhoto.toImage(it) }
     }
-    val unit = size / 10
-    fun gear(slot: GearSlot) = Game.gearById(equipped[slot])?.takeIf { it.emoji.isNotEmpty() }
-    val outfit = gear(GearSlot.OUTFIT)
-    // With an outfit the head moves up and shrinks a little to make room for the body.
-    val headSize = if (outfit != null) 4.6f else 5.4f
-    val headY = if (outfit != null) 4.2f else 5f
-
-    Box(Modifier.size(size).background(background, CircleShape)) {
-        outfit?.let { EmojiAt(it.emoji, unit, 3.6f, 5f, 7.75f) }
-        EmojiAt(hero.emoji, unit, headSize, 5f, headY)
-        gear(GearSlot.HEAD)?.let { hat ->
-            val hatSize = 2.6f * hero.hatScale
-            val glyphTop = headY - headSize / 2
-            EmojiAt(hat.emoji, unit, hatSize, 5f, glyphTop + hero.headTop * headSize + (0.1f - hat.lift) * hatSize)
+    Box(Modifier.size(size)) {
+        if (photo != null) {
+            Image(
+                photo,
+                contentDescription = "Your avatar",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().clip(CircleShape).border(3.dp, Brand, CircleShape)
+            )
+        } else {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Brush.radialGradient(listOf(Color.White, MaterialTheme.colorScheme.surfaceVariant)), CircleShape)
+                    .border(3.dp, Brand, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                // Sized from dp so the phone's font size setting doesn't change it.
+                Text(hero.emoji, fontSize = with(LocalDensity.current) { (size * 0.55f).toSp() })
+            }
         }
-        gear(GearSlot.HAND)?.let { EmojiAt(it.emoji, unit, 2.2f, 8.1f, if (outfit != null) 7f else 6.6f) }
-        gear(GearSlot.PET)?.let { EmojiAt(it.emoji, unit, 2f, 2.2f, 7.8f) }
+        if (level != null) {
+            Box(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .size(size * 0.3f)
+                    .background(Brand, CircleShape)
+                    .border(2.dp, Color.White, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "$level",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = with(LocalDensity.current) { (size * 0.13f).toSp() }
+                )
+            }
+        }
     }
 }
 
-/** One emoji centered on ([x], [y]) in a square [boxSize] wide, all in multiples of [unit]. */
 @Composable
-private fun EmojiAt(emoji: String, unit: Dp, boxSize: Float, x: Float, y: Float) {
-    val box = unit * boxSize
-    val fontSize = with(LocalDensity.current) { (box * 0.84f).toSp() }
-    val lineHeight = with(LocalDensity.current) { box.toSp() }
-    Box(
-        Modifier
-            .offset(x = unit * x - box / 2, y = unit * y - box / 2)
-            .size(box)
-            .wrapContentSize(unbounded = true),
-        contentAlignment = Alignment.Center
+private fun BadgesCard(earned: Map<String, String>) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Badges", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                Text(
+                    "${earned.size} of ${Game.badges.size}",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            // Earned badges first, newest first, then the ones still to win.
+            val sorted = Game.badges.sortedWith(
+                compareByDescending<Badge> { it.id in earned }.thenByDescending { earned[it.id] ?: "" }
+            )
+            sorted.chunked(3).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { b -> BadgeTile(b, earned[b.id], Modifier.weight(1f)) }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BadgeTile(badge: Badge, earnedOn: String?, modifier: Modifier = Modifier) {
+    val won = earnedOn != null
+    Column(
+        modifier
+            .background(
+                if (won) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                RoundedCornerShape(12.dp)
+            )
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            emoji,
-            maxLines = 1,
-            softWrap = false,
-            textAlign = TextAlign.Center,
-            style = TextStyle(
-                fontSize = fontSize,
-                lineHeight = lineHeight,
-                lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
-                platformStyle = PlatformTextStyle(includeFontPadding = false)
-            )
+            if (won) badge.emoji else "🔒",
+            fontSize = 30.sp,
+            modifier = Modifier.alpha(if (won) 1f else 0.5f)
         )
-    }
-}
-
-@Composable
-private fun GearTile(gear: Gear, unlocked: Boolean, worn: Boolean, onClick: () -> Unit) {
-    OutlinedCard(
-        modifier = Modifier.width(84.dp).clickable(enabled = unlocked, onClick = onClick),
-        border = BorderStroke(if (worn) 2.dp else 1.dp, if (worn) Brand else MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(
-            Modifier.fillMaxWidth().padding(8.dp).alpha(if (unlocked) 1f else 0.45f),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            if (gear.slot == GearSlot.AURA) {
-                Box(Modifier.size(32.dp).background(Brush.radialGradient(gear.colors.map { Color(it) }), CircleShape))
-            } else {
-                Text(gear.emoji, fontSize = 28.sp)
-            }
-            Text(
-                gear.name,
-                style = MaterialTheme.typography.labelSmall,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                minLines = 2
-            )
-            Text(
-                when {
-                    !unlocked -> "🔒 Lv ${gear.level}"
-                    worn -> "Wearing"
-                    else -> "Lv ${gear.level}"
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = if (worn) Brand else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+        Text(
+            badge.name,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
+        Text(
+            if (earnedOn != null) "Earned ${LocalDate.parse(earnedOn).format(DateTimeFormatter.ofPattern("MMM d"))}" else badge.hint,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            minLines = 2,
+            maxLines = 3
+        )
     }
 }
 
@@ -357,7 +375,7 @@ private fun RulesCard() {
                 "−10 for a day well over budget"
             ).forEach { Text("• $it", style = MaterialTheme.typography.bodyMedium) }
             Text(
-                "XP comes from what you already log, so there's nothing extra to enter. Gear you unlock stays unlocked.",
+                "XP comes from what you already log, so there's nothing extra to enter. Badges stay yours once you've earned them.",
                 style = MaterialTheme.typography.bodySmall
             )
         }
@@ -376,7 +394,7 @@ private fun HeroPicker(current: HeroClass?, onPick: (HeroClass) -> Unit, onCance
                 Text("Choose your hero", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text(
                     "Your hero levels up from healthy days: green foods, staying on budget and steps. Red foods cost XP. " +
-                        "Each hero gets a bonus on one habit.",
+                        "Each hero gets a bonus on one habit. You can use your own photo as the avatar afterwards.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -408,7 +426,7 @@ private fun HeroPicker(current: HeroClass?, onPick: (HeroClass) -> Unit, onCance
         }
         if (onCancel != null) {
             item {
-                TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Keep my current hero") }
+                OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth()) { Text("Keep my current hero") }
             }
         }
     }
@@ -430,7 +448,7 @@ fun HeroSummaryCard(store: AppStore, onOpen: () -> Unit) {
                 Column(Modifier.weight(1f)) {
                     Text("Level up your health", style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Pick a hero who earns XP and unlocks gear from your healthy days.",
+                        "Pick a hero who earns XP and badges from your healthy days.",
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
@@ -439,7 +457,7 @@ fun HeroSummaryCard(store: AppStore, onOpen: () -> Unit) {
         }
         val progress = store.gameProgress(today) ?: return@Card
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            HeroAvatar(hero, store.equipped, size = 64.dp)
+            HeroAvatar(store, size = 56.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -457,7 +475,8 @@ fun HeroSummaryCard(store: AppStore, onOpen: () -> Unit) {
                 }
                 XpBar(progress)
                 Text(
-                    "${progress.xpForNextLevel - progress.xpIntoLevel} XP to level ${progress.level + 1}",
+                    "${progress.xpForNextLevel - progress.xpIntoLevel} XP to level ${progress.level + 1} · " +
+                        "${store.badges.size} badges",
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -465,35 +484,42 @@ fun HeroSummaryCard(store: AppStore, onOpen: () -> Unit) {
     }
 }
 
-/** Celebrates new levels and the gear they unlocked. Shows once per level reached. */
+/** Celebrates new levels and newly earned badges, once each. */
 @Composable
-fun LevelUpDialog(store: AppStore) {
-    val hero = store.hero ?: return
-    val progress = store.gameProgress(LocalDate.now()) ?: return
-    if (progress.level <= store.peakLevel) return
-    val unlocked = Game.unlockedBetween(store.peakLevel, progress.level)
+fun CelebrationDialog(store: AppStore) {
+    if (store.hero == null) return
+    val today = LocalDate.now()
+    val progress = store.gameProgress(today) ?: return
+    val earned = store.newBadges(progress)
+    val levelUp = progress.level > store.peakLevel
+    if (!levelUp && earned.isEmpty()) return
+    val done = { store.celebrate(progress.level, earned, today) }
     AlertDialog(
-        onDismissRequest = { store.reachLevel(progress.level) },
-        confirmButton = { TextButton(onClick = { store.reachLevel(progress.level) }) { Text("Awesome!") } },
-        icon = { HeroAvatar(hero, store.equipped, size = 96.dp) },
-        title = { Text("Level ${progress.level}!", textAlign = TextAlign.Center) },
+        onDismissRequest = done,
+        confirmButton = { TextButton(onClick = done) { Text("Awesome!") } },
+        icon = { HeroAvatar(store, size = 88.dp, level = progress.level) },
+        title = {
+            Text(
+                when {
+                    levelUp -> "Level ${progress.level}!"
+                    earned.size == 1 -> "New badge!"
+                    else -> "${earned.size} new badges!"
+                },
+                textAlign = TextAlign.Center
+            )
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Your ${hero.label} is now a level ${progress.level} ${progress.title}.")
-                if (unlocked.isNotEmpty()) {
-                    Text("New gear unlocked:", fontWeight = FontWeight.SemiBold)
-                    unlocked.forEach { g ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (g.slot == GearSlot.AURA) {
-                                Box(Modifier.size(20.dp).background(Brush.radialGradient(g.colors.map { Color(it) }), CircleShape))
-                            } else {
-                                Text(g.emoji, fontSize = 20.sp)
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            Text("${g.name} (${g.slot.label.lowercase()})")
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (levelUp) Text("You're now a level ${progress.level} ${progress.title}.")
+                earned.forEach { b ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(b.emoji, fontSize = 28.sp)
+                        Spacer(Modifier.width(10.dp))
+                        Column {
+                            Text(b.name, fontWeight = FontWeight.SemiBold)
+                            Text(b.hint, style = MaterialTheme.typography.bodySmall)
                         }
                     }
-                    Text("Put it on from the Hero tab.", style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
