@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import com.freshstart.app.reminders.Reminders
 import com.freshstart.app.ui.HeroScreen
 import com.freshstart.app.ui.LearnScreen
-import com.freshstart.app.ui.LevelUpDialog
+import com.freshstart.app.ui.CelebrationDialog
 import com.freshstart.app.ui.PlanScreen
 import com.freshstart.app.ui.ProfileForm
 import com.freshstart.app.ui.ProgressScreen
@@ -163,7 +163,7 @@ fun App(store: AppStore, account: Account) {
         store.importFromHealth()
         store.refreshSteps(java.time.LocalDate.now())
     }
-    LevelUpDialog(store)
+    CelebrationDialog(store)
 
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var lessonToOpen by remember { mutableStateOf<Int?>(null) }

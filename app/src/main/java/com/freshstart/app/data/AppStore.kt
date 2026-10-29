@@ -46,10 +46,14 @@ class AppStore(context: Context) {
     var hero by mutableStateOf<HeroClass?>(null)
         private set
 
-    /** Gear id worn in each slot. */
-    val equipped = mutableStateMapOf<GearSlot, String>()
+    /** Badges earned, with the date each was first earned. Badges stay earned once won. */
+    val badges = mutableStateMapOf<String, String>()
 
-    /** Highest level reached. Gear unlocked on the way stays unlocked even if XP later drops. */
+    /** The user's own avatar photo, a small square JPEG in Base64, or blank to show the hero. */
+    var avatarPhoto by mutableStateOf("")
+        private set
+
+    /** Highest level reached, so each new level is celebrated once. */
     var peakLevel by mutableStateOf(1)
         private set
 
@@ -195,15 +199,22 @@ class AppStore(context: Context) {
         save()
     }
 
-    /** Wears [gear], or takes it off if it's already worn. */
-    fun toggleGear(gear: Gear) {
-        if (equipped[gear.slot] == gear.id) equipped.remove(gear.slot) else equipped[gear.slot] = gear.id
+    fun setAvatarPhoto(base64: String) {
+        avatarPhoto = base64
         save()
     }
 
-    fun reachLevel(level: Int) {
-        if (level <= peakLevel) return
-        peakLevel = level
+    /** Badges the log qualifies for that haven't been awarded yet. */
+    fun newBadges(progress: GameProgress): List<Badge> {
+        val p = profile ?: return emptyList()
+        val facts = BadgeFacts(p, foods, weights, progress, lessonsRead.size, Lessons.all.size)
+        return Game.qualifiedBadges(facts).filter { it !in badges }.mapNotNull { Game.badgeById(it) }
+    }
+
+    /** Records that the user has seen this level and these badges. */
+    fun celebrate(level: Int, earned: List<Badge>, today: java.time.LocalDate) {
+        if (level > peakLevel) peakLevel = level
+        earned.forEach { badges[it.id] = today.toString() }
         save()
     }
 
@@ -268,7 +279,8 @@ class AppStore(context: Context) {
         aiIdeas.clear()
         lessonsRead.clear()
         hero = null
-        equipped.clear()
+        badges.clear()
+        avatarPhoto = ""
         peakLevel = 1
         stepsByDay.clear()
         updatedAt = root.optLong("updatedAt", 0L)
@@ -328,11 +340,9 @@ class AppStore(context: Context) {
             root.optJSONObject("game")?.let { g ->
                 hero = HeroClass.entries.firstOrNull { it.name == g.optString("hero") }
                 peakLevel = g.optInt("peakLevel", 1)
-                g.optJSONObject("equipped")?.let { eq ->
-                    GearSlot.entries.forEach { slot ->
-                        val id = eq.optString(slot.name, "")
-                        if (Game.gearById(id)?.slot == slot) equipped[slot] = id
-                    }
+                avatarPhoto = g.optString("avatarPhoto", "")
+                g.optJSONObject("badges")?.let { b ->
+                    b.keys().forEach { id -> if (Game.badgeById(id) != null) badges[id] = b.getString(id) }
                 }
                 g.optJSONObject("steps")?.let { st ->
                     st.keys().forEach { day -> stepsByDay[day] = st.getLong(day) }
@@ -423,7 +433,8 @@ class AppStore(context: Context) {
         root.put("game", JSONObject().apply {
             hero?.let { put("hero", it.name) }
             put("peakLevel", peakLevel)
-            put("equipped", JSONObject().apply { equipped.forEach { (slot, id) -> put(slot.name, id) } })
+            if (avatarPhoto.isNotEmpty()) put("avatarPhoto", avatarPhoto)
+            put("badges", JSONObject().apply { badges.toSortedMap().forEach { (id, date) -> put(id, date) } })
             put("steps", JSONObject().apply { stepsByDay.toSortedMap().forEach { (day, n) -> put(day, n) } })
         })
         root.put("healthConnect", healthOn)

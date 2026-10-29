@@ -16,48 +16,26 @@ enum class XpSource(val label: String) {
     RED("red foods")
 }
 
-/**
- * Heroes are head-and-shoulders emoji so gear can be placed on them. [headTop] is where the
- * top of the head sits, as a share of the emoji's height, and [hatScale] enlarges headgear
- * for heroes that already wear a hat, so it covers it.
- */
-enum class HeroClass(
-    val label: String,
-    val emoji: String,
-    val blurb: String,
-    val boost: XpSource,
-    val headTop: Float = 0.03f,
-    val hatScale: Float = 1f
-) {
-    WIZARD("Green Wizard", "🧙", "Draws power from vegetables and fruit.", XpSource.GREEN, headTop = 0f, hatScale = 1.25f),
+enum class HeroClass(val label: String, val emoji: String, val blurb: String, val boost: XpSource) {
+    WIZARD("Green Wizard", "🧙", "Draws power from vegetables and fruit.", XpSource.GREEN),
     NINJA("Step Ninja", "🥷", "Grows stronger with every step.", XpSource.STEPS),
     HERO("Budget Hero", "🧑", "Rewarded for days spent inside the calorie budget.", XpSource.BUDGET),
     RANGER("Streak Ranger", "🧔", "Never misses a day on the trail.", XpSource.STREAK),
-    FAIRY("Logging Elf", "🧝", "Loves a complete food diary.", XpSource.LOGGING, headTop = 0.04f),
-    ROBOT("Scale Bot", "🤖", "Runs on regular weigh-ins.", XpSource.WEIGH_IN, headTop = 0.16f)
+    FAIRY("Logging Elf", "🧝", "Loves a complete food diary.", XpSource.LOGGING),
+    ROBOT("Scale Bot", "🤖", "Runs on regular weigh-ins.", XpSource.WEIGH_IN)
 }
 
-enum class GearSlot(val label: String) {
-    HEAD("Headgear"),
-    OUTFIT("Outfit"),
-    HAND("Held item"),
-    PET("Pet"),
-    AURA("Aura")
-}
+/** An achievement earned from what's logged. [hint] says how to earn it. */
+data class Badge(val id: String, val emoji: String, val name: String, val hint: String)
 
-/**
- * Something the hero can wear. Auras have no emoji: they tint the circle behind the hero
- * with [colors], given as ARGB values from the center outwards. [lift] raises headgear whose
- * emoji fills its whole square, as a share of its size, so it sits on the head, not the face.
- */
-data class Gear(
-    val id: String,
-    val name: String,
-    val slot: GearSlot,
-    val level: Int,
-    val emoji: String = "",
-    val colors: List<Long> = emptyList(),
-    val lift: Float = 0f
+/** Everything badges are judged on. */
+data class BadgeFacts(
+    val profile: Profile,
+    val foods: List<FoodEntry>,
+    val weights: List<WeightEntry>,
+    val progress: GameProgress,
+    val lessonsRead: Int,
+    val lessonCount: Int
 )
 
 /** One line of a day's XP breakdown, such as "+12 · 6,000 steps". */
@@ -86,44 +64,97 @@ object Game {
     const val HERO_BONUS = 0.25
     const val WORST_DAY = -40
     const val STEP_GOAL = 10_000L
+    private const val BUDGET_XP = 25
+    private const val STEP_GOAL_LABEL = "Hit 10,000 steps"
 
-    val gear: List<Gear> = listOf(
-        Gear("cap", "Sporty cap", GearSlot.HEAD, 2, "🧢"),
-        Gear("chick", "Chick", GearSlot.PET, 3, "🐣"),
-        Gear("tee", "Training tee", GearSlot.OUTFIT, 4, "👕"),
-        Gear("carrot", "Carrot wand", GearSlot.HAND, 5, "🥕"),
-        Gear("leafy", "Leafy aura", GearSlot.AURA, 6, colors = listOf(0xFFB9F6CA, 0xFF43A047)),
-        Gear("vest", "Running vest", GearSlot.OUTFIT, 7, "🎽"),
-        Gear("cat", "Cat", GearSlot.PET, 8, "🐱"),
-        Gear("helm", "Builder's helmet", GearSlot.HEAD, 9, "⛑️"),
-        Gear("dagger", "Dagger", GearSlot.HAND, 10, "🗡️"),
-        Gear("sunrise", "Sunrise aura", GearSlot.AURA, 11, colors = listOf(0xFFFFE082, 0xFFFF7043)),
-        Gear("gi", "Dojo gi", GearSlot.OUTFIT, 12, "🥋"),
-        Gear("dog", "Dog", GearSlot.PET, 13, "🐶"),
-        Gear("tophat", "Top hat", GearSlot.HEAD, 14, "🎩"),
-        Gear("bow", "Bow", GearSlot.HAND, 15, "🏹"),
-        Gear("ocean", "Ocean aura", GearSlot.AURA, 16, colors = listOf(0xFFB3E5FC, 0xFF1E88E5)),
-        Gear("coat", "Adventurer's coat", GearSlot.OUTFIT, 17, "🧥"),
-        Gear("fox", "Fox", GearSlot.PET, 18, "🦊"),
-        Gear("wand", "Magic wand", GearSlot.HAND, 19, "🪄"),
-        Gear("crown", "Crown", GearSlot.HEAD, 20, "👑"),
-        Gear("owl", "Owl", GearSlot.PET, 22, "🦉"),
-        Gear("ember", "Ember aura", GearSlot.AURA, 23, colors = listOf(0xFFFFCC80, 0xFFD84315)),
-        Gear("shield", "Shield", GearSlot.HAND, 24, "🛡️"),
-        Gear("robe", "Royal robe", GearSlot.OUTFIT, 25, "👘"),
-        Gear("unicorn", "Unicorn", GearSlot.PET, 27, "🦄"),
-        Gear("swords", "Twin swords", GearSlot.HAND, 28, "⚔️"),
-        Gear("golden", "Golden aura", GearSlot.AURA, 30, colors = listOf(0xFFFFF59D, 0xFFFFB300)),
-        Gear("dragon", "Dragon", GearSlot.PET, 30, "🐉"),
-        Gear("trident", "Trident", GearSlot.HAND, 35, "🔱"),
-        Gear("cosmic", "Cosmic aura", GearSlot.AURA, 40, colors = listOf(0xFFE1BEE7, 0xFF4527A0)),
-        Gear("star", "Star crown", GearSlot.HEAD, 40, "🌟", lift = 0.3f)
+    val badges: List<Badge> = listOf(
+        Badge("first_log", "🍽️", "First bite", "Log your first food"),
+        Badge("streak_3", "🔥", "On a roll", "Log food 3 days in a row"),
+        Badge("streak_7", "📅", "Week warrior", "Log food 7 days in a row"),
+        Badge("streak_30", "🏆", "Habit hero", "Log food 30 days in a row"),
+        Badge("green_5", "🥦", "Green machine", "Eat 5 green foods in one day"),
+        Badge("red_free", "🛡️", "Red-free day", "Finish a day with 3 or more foods and no red"),
+        Badge("budget_1", "🎯", "On target", "Finish a day within your budget"),
+        Badge("budget_7", "🏹", "Sharpshooter", "Finish 7 days within your budget"),
+        Badge("budget_30", "💎", "Budget master", "Finish 30 days within your budget"),
+        Badge("steps_10k", "👟", "10K club", "Walk 10,000 steps in a day"),
+        Badge("steps_10k_7", "🏃", "Road runner", "Walk 10,000 steps on 7 days"),
+        Badge("weigh_1", "⚖️", "Step on up", "Log a weigh-in after your first day"),
+        Badge("weigh_10", "📈", "Data driven", "Log 10 weigh-ins"),
+        Badge("lost_1", "🌱", "First steps", "Lose 1% of your starting weight"),
+        Badge("lost_5", "🌿", "Gaining ground", "Lose 5% of your starting weight"),
+        Badge("lost_10", "🌳", "Big change", "Lose 10% of your starting weight"),
+        Badge("goal", "🥇", "Goal reached", "Reach your goal weight"),
+        Badge("lessons_5", "📚", "Bookworm", "Read 5 lessons"),
+        Badge("lessons_all", "🎓", "Graduate", "Read every lesson"),
+        Badge("level_5", "⭐", "Adventurer", "Reach level 5"),
+        Badge("level_10", "🌟", "Veteran", "Reach level 10"),
+        Badge("level_20", "💫", "Champion", "Reach level 20"),
+        Badge("level_30", "👑", "Legend", "Reach level 30")
     )
 
-    fun gearById(id: String?): Gear? = gear.firstOrNull { it.id == id }
+    fun badgeById(id: String): Badge? = badges.firstOrNull { it.id == id }
 
-    /** Gear that becomes available when going from level [from] up to level [to]. */
-    fun unlockedBetween(from: Int, to: Int) = gear.filter { it.level in (from + 1)..to }
+    /** Ids of the badges the log currently qualifies for. */
+    fun qualifiedBadges(f: BadgeFacts): Set<String> {
+        val days = f.progress.days.values
+        val onBudget = days.count { d -> d.lines.any { it.source == XpSource.BUDGET && it.xp == BUDGET_XP } }
+        val bigStepDays = days.count { d -> d.lines.any { it.source == XpSource.STEPS && it.label == STEP_GOAL_LABEL } }
+        val foodsByDay = f.foods.groupBy { it.date }
+        val today = f.progress.days.keys.maxOrNull()
+        val lostShare = if (f.profile.startWeightKg > 0) {
+            (f.profile.startWeightKg - (f.weights.maxByOrNull { it.date }?.kg ?: f.profile.startWeightKg)) / f.profile.startWeightKg
+        } else 0.0
+        val latestKg = f.weights.maxByOrNull { it.date }?.kg
+        val streak = longestStreak(foodsByDay.keys)
+
+        return buildSet {
+            if (f.foods.isNotEmpty()) add("first_log")
+            if (streak >= 3) add("streak_3")
+            if (streak >= 7) add("streak_7")
+            if (streak >= 30) add("streak_30")
+            if (foodsByDay.values.any { list -> list.count { it.color == FoodColor.GREEN } >= 5 }) add("green_5")
+            if (foodsByDay.any { (date, list) -> date != today && list.size >= 3 && list.none { it.color == FoodColor.RED } }) add("red_free")
+            if (onBudget >= 1) add("budget_1")
+            if (onBudget >= 7) add("budget_7")
+            if (onBudget >= 30) add("budget_30")
+            if (bigStepDays >= 1) add("steps_10k")
+            if (bigStepDays >= 7) add("steps_10k_7")
+            if (f.weights.any { it.date != f.profile.startDate }) add("weigh_1")
+            if (f.weights.size >= 10) add("weigh_10")
+            if (lostShare >= 0.01) add("lost_1")
+            if (lostShare >= 0.05) add("lost_5")
+            if (lostShare >= 0.10) add("lost_10")
+            if (latestKg != null && f.profile.goalWeightKg < f.profile.startWeightKg && latestKg <= f.profile.goalWeightKg) add("goal")
+            if (f.lessonsRead >= 5) add("lessons_5")
+            if (f.lessonCount > 0 && f.lessonsRead >= f.lessonCount) add("lessons_all")
+            if (f.progress.level >= 5) add("level_5")
+            if (f.progress.level >= 10) add("level_10")
+            if (f.progress.level >= 20) add("level_20")
+            if (f.progress.level >= 30) add("level_30")
+        }
+    }
+
+    private fun longestStreak(loggedDays: Set<String>): Int {
+        var best = 0
+        for (day in loggedDays) {
+            val date = LocalDate.parse(day)
+            // Only count from the first day of each run.
+            if (date.minusDays(1).toString() in loggedDays) continue
+            best = max(best, streakForward(loggedDays, date))
+        }
+        return best
+    }
+
+    private fun streakForward(loggedDays: Set<String>, start: LocalDate): Int {
+        var d = start
+        var n = 0
+        while (d.toString() in loggedDays) {
+            n++
+            d = d.plusDays(1)
+        }
+        return n
+    }
 
     /** XP needed to go from [level] to the next one. Grows slowly so early levels come quickly. */
     fun xpForNext(level: Int) = 100 + 25 * (level - 1)
@@ -227,7 +258,7 @@ object Game {
                 val eaten = foods.sumOf { it.calories }
                 when {
                     eaten < budget * 0.6 -> Unit // Probably not everything was logged.
-                    eaten <= budget -> lines += XpLine(XpSource.BUDGET, "Stayed within your budget", 25)
+                    eaten <= budget -> lines += XpLine(XpSource.BUDGET, "Stayed within your budget", BUDGET_XP)
                     eaten <= budget * 1.1 -> lines += XpLine(XpSource.BUDGET, "Just over budget", 10)
                     eaten > budget * 1.2 -> lines += XpLine(XpSource.BUDGET, "Well over budget", -10)
                 }
@@ -239,7 +270,7 @@ object Game {
         if (steps != null && steps > 0) {
             val stepXp = min(30, (steps / 500).toInt())
             if (stepXp > 0) lines += XpLine(XpSource.STEPS, "${"%,d".format(steps)} steps", stepXp)
-            if (steps >= STEP_GOAL) lines += XpLine(XpSource.STEPS, "Hit 10,000 steps", 15)
+            if (steps >= STEP_GOAL) lines += XpLine(XpSource.STEPS, STEP_GOAL_LABEL, 15)
         }
 
         if (weighedIn) lines += XpLine(XpSource.WEIGH_IN, "Weighed in", 5)
