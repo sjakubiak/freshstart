@@ -16,13 +16,25 @@ enum class XpSource(val label: String) {
     RED("red foods")
 }
 
-enum class HeroClass(val label: String, val emoji: String, val blurb: String, val boost: XpSource) {
-    WIZARD("Green Wizard", "🧙", "Draws power from vegetables and fruit.", XpSource.GREEN),
+/**
+ * Heroes are head-and-shoulders emoji so gear can be placed on them. [headTop] is where the
+ * top of the head sits, as a share of the emoji's height, and [hatScale] enlarges headgear
+ * for heroes that already wear a hat, so it covers it.
+ */
+enum class HeroClass(
+    val label: String,
+    val emoji: String,
+    val blurb: String,
+    val boost: XpSource,
+    val headTop: Float = 0.03f,
+    val hatScale: Float = 1f
+) {
+    WIZARD("Green Wizard", "🧙", "Draws power from vegetables and fruit.", XpSource.GREEN, headTop = 0f, hatScale = 1.25f),
     NINJA("Step Ninja", "🥷", "Grows stronger with every step.", XpSource.STEPS),
-    HERO("Budget Hero", "🦸", "Rewarded for days spent inside the calorie budget.", XpSource.BUDGET),
-    RANGER("Streak Ranger", "🧝", "Never misses a day on the trail.", XpSource.STREAK),
-    FAIRY("Logging Fairy", "🧚", "Loves a complete food diary.", XpSource.LOGGING),
-    ROBOT("Scale Bot", "🤖", "Runs on regular weigh-ins.", XpSource.WEIGH_IN)
+    HERO("Budget Hero", "🧑", "Rewarded for days spent inside the calorie budget.", XpSource.BUDGET),
+    RANGER("Streak Ranger", "🧔", "Never misses a day on the trail.", XpSource.STREAK),
+    FAIRY("Logging Elf", "🧝", "Loves a complete food diary.", XpSource.LOGGING, headTop = 0.04f),
+    ROBOT("Scale Bot", "🤖", "Runs on regular weigh-ins.", XpSource.WEIGH_IN, headTop = 0.16f)
 }
 
 enum class GearSlot(val label: String) {
@@ -35,7 +47,8 @@ enum class GearSlot(val label: String) {
 
 /**
  * Something the hero can wear. Auras have no emoji: they tint the circle behind the hero
- * with [colors], given as ARGB values from the center outwards.
+ * with [colors], given as ARGB values from the center outwards. [lift] raises headgear whose
+ * emoji fills its whole square, as a share of its size, so it sits on the head, not the face.
  */
 data class Gear(
     val id: String,
@@ -43,7 +56,8 @@ data class Gear(
     val slot: GearSlot,
     val level: Int,
     val emoji: String = "",
-    val colors: List<Long> = emptyList()
+    val colors: List<Long> = emptyList(),
+    val lift: Float = 0f
 )
 
 /** One line of a day's XP breakdown, such as "+12 · 6,000 steps". */
@@ -103,7 +117,7 @@ object Game {
         Gear("dragon", "Dragon", GearSlot.PET, 30, "🐉"),
         Gear("trident", "Trident", GearSlot.HAND, 35, "🔱"),
         Gear("cosmic", "Cosmic aura", GearSlot.AURA, 40, colors = listOf(0xFFE1BEE7, 0xFF4527A0)),
-        Gear("star", "Star crown", GearSlot.HEAD, 40, "🌟")
+        Gear("star", "Star crown", GearSlot.HEAD, 40, "🌟", lift = 0.3f)
     )
 
     fun gearById(id: String?): Gear? = gear.firstOrNull { it.id == id }

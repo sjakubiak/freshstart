@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -41,7 +42,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -166,7 +171,11 @@ private fun XpBar(progress: GameProgress, modifier: Modifier = Modifier) {
     )
 }
 
-/** The hero drawn from emoji: aura behind, headgear above, outfit at the chest, item in hand and a pet at their feet. */
+/**
+ * The hero drawn from emoji: aura behind, outfit as the body under the head, headgear on top
+ * of the head, an item in hand and a pet at their feet. Positions are in tenths of [size],
+ * and emoji are sized in dp so the phone's font size setting can't knock them out of place.
+ */
 @Composable
 fun HeroAvatar(hero: HeroClass, equipped: Map<GearSlot, String>, size: Dp) {
     val aura = Game.gearById(equipped[GearSlot.AURA])?.colors?.map { Color(it) }
@@ -176,21 +185,50 @@ fun HeroAvatar(hero: HeroClass, equipped: Map<GearSlot, String>, size: Dp) {
         Brush.radialGradient(listOf(Color.White, MaterialTheme.colorScheme.surfaceVariant))
     }
     val unit = size / 10
-    fun emoji(slot: GearSlot) = Game.gearById(equipped[slot])?.emoji
-    Box(Modifier.size(size).background(background, CircleShape), contentAlignment = Alignment.Center) {
-        Text(hero.emoji, fontSize = (unit.value * 4.6f).sp)
-        emoji(GearSlot.HEAD)?.let {
-            Text(it, fontSize = (unit.value * 2.2f).sp, modifier = Modifier.align(Alignment.TopCenter).offset(y = unit * 0.3f))
+    fun gear(slot: GearSlot) = Game.gearById(equipped[slot])?.takeIf { it.emoji.isNotEmpty() }
+    val outfit = gear(GearSlot.OUTFIT)
+    // With an outfit the head moves up and shrinks a little to make room for the body.
+    val headSize = if (outfit != null) 4.6f else 5.4f
+    val headY = if (outfit != null) 4.2f else 5f
+
+    Box(Modifier.size(size).background(background, CircleShape)) {
+        outfit?.let { EmojiAt(it.emoji, unit, 3.6f, 5f, 7.75f) }
+        EmojiAt(hero.emoji, unit, headSize, 5f, headY)
+        gear(GearSlot.HEAD)?.let { hat ->
+            val hatSize = 2.6f * hero.hatScale
+            val glyphTop = headY - headSize / 2
+            EmojiAt(hat.emoji, unit, hatSize, 5f, glyphTop + hero.headTop * headSize + (0.1f - hat.lift) * hatSize)
         }
-        emoji(GearSlot.OUTFIT)?.let {
-            Text(it, fontSize = (unit.value * 1.8f).sp, modifier = Modifier.align(Alignment.Center).offset(y = unit * 2.4f))
-        }
-        emoji(GearSlot.HAND)?.let {
-            Text(it, fontSize = (unit.value * 2f).sp, modifier = Modifier.align(Alignment.CenterEnd).offset(x = -unit * 0.6f, y = unit * 0.6f))
-        }
-        emoji(GearSlot.PET)?.let {
-            Text(it, fontSize = (unit.value * 1.9f).sp, modifier = Modifier.align(Alignment.BottomStart).offset(x = unit * 1.1f, y = -unit * 0.6f))
-        }
+        gear(GearSlot.HAND)?.let { EmojiAt(it.emoji, unit, 2.2f, 8.1f, if (outfit != null) 7f else 6.6f) }
+        gear(GearSlot.PET)?.let { EmojiAt(it.emoji, unit, 2f, 2.2f, 7.8f) }
+    }
+}
+
+/** One emoji centered on ([x], [y]) in a square [boxSize] wide, all in multiples of [unit]. */
+@Composable
+private fun EmojiAt(emoji: String, unit: Dp, boxSize: Float, x: Float, y: Float) {
+    val box = unit * boxSize
+    val fontSize = with(LocalDensity.current) { (box * 0.84f).toSp() }
+    val lineHeight = with(LocalDensity.current) { box.toSp() }
+    Box(
+        Modifier
+            .offset(x = unit * x - box / 2, y = unit * y - box / 2)
+            .size(box)
+            .wrapContentSize(unbounded = true),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            emoji,
+            maxLines = 1,
+            softWrap = false,
+            textAlign = TextAlign.Center,
+            style = TextStyle(
+                fontSize = fontSize,
+                lineHeight = lineHeight,
+                lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
+                platformStyle = PlatformTextStyle(includeFontPadding = false)
+            )
+        )
     }
 }
 
