@@ -193,7 +193,7 @@ class AppStore(context: Context) {
         save()
     }
 
-    fun setCoachAdvice(advice: CoachAdvice) {
+    fun saveCoachAdvice(advice: CoachAdvice) {
         coachAdvice = advice
         save()
     }

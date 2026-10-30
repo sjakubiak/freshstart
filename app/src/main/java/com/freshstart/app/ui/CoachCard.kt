@@ -54,7 +54,7 @@ fun CoachCard(store: AppStore) {
             loading = false
             result.onSuccess {
                 if (it.tips.isEmpty()) message = "The coach didn't send any tips. Try again."
-                else store.setCoachAdvice(it)
+                else store.saveCoachAdvice(it)
             }.onFailure { message = friendlyError(it) }
         }
     }
