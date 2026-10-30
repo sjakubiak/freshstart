@@ -54,7 +54,7 @@ fun CoachCard(store: AppStore) {
         loading = true
         message = null
         scope.launch {
-            val result = runCatching { GeminiClient(store.geminiKey).coachAdvice(summary, today.toString()) }
+            val result = runCatching { GeminiClient.forStore(store).coachAdvice(summary, today.toString()) }
             loading = false
             result.onSuccess {
                 if (it.tips.isEmpty()) message = "The coach didn't send any tips. Try again."
@@ -70,7 +70,7 @@ fun CoachCard(store: AppStore) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("✨ AI coach", style = MaterialTheme.typography.titleMedium)
 
-            if (store.geminiKey.isBlank()) {
+            if (!GeminiClient.isReady(store)) {
                 Text(
                     "Get personal tips from your own weigh-ins, meals and steps. The coach uses Google's Gemini AI " +
                         "with your own free key (the same one used for kitchen photos).",

@@ -90,13 +90,13 @@ fun PlanScreen(store: AppStore) {
                         Button(onClick = { showKitchen = true }) {
                             Text(if (store.pantry.isEmpty()) "Set up my kitchen" else "Update my kitchen")
                         }
-                        if (store.geminiKey.isNotBlank() && store.pantry.isNotEmpty()) {
+                        if (GeminiClient.isReady(store) && store.pantry.isNotEmpty()) {
                             OutlinedButton(enabled = !loadingIdeas, onClick = {
                                 loadingIdeas = true
                                 ideasMessage = null
                                 scope.launch {
                                     val result = runCatching {
-                                        GeminiClient(store.geminiKey).mealIdeas(store.pantry.toList(), budget)
+                                        GeminiClient.forStore(store).mealIdeas(store.pantry.toList(), budget)
                                     }
                                     loadingIdeas = false
                                     result.onSuccess { ideas ->

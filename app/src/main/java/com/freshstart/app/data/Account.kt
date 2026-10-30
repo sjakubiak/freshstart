@@ -11,7 +11,10 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.freshstart.app.BuildConfig
 import com.google.firebase.FirebaseApp
+import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseUser
@@ -52,6 +55,11 @@ class Account(context: Context, private val store: AppStore) {
         private set
 
     init {
+        // Lets Firebase check requests really come from the Play Store app. It has no effect until
+        // App Check enforcement is switched on in the Firebase console.
+        if (configured && BuildConfig.STORE_BUILD) {
+            FirebaseAppCheck.getInstance().installAppCheckProviderFactory(PlayIntegrityAppCheckProviderFactory.getInstance())
+        }
         auth?.addAuthStateListener { user = it.currentUser }
     }
 

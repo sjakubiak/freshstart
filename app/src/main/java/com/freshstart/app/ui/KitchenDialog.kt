@@ -88,7 +88,7 @@ fun KitchenDialog(store: AppStore, onDismiss: () -> Unit) {
             val result = runCatching {
                 val bitmap = withContext(Dispatchers.IO) { loadScaled(context, uri, 1280) }
                     ?: throw IllegalStateException("couldn't open the photo")
-                GeminiClient(store.geminiKey).foodsInPhoto(bitmap)
+                GeminiClient.forStore(store).foodsInPhoto(bitmap)
             }
             scanning = false
             message = result.fold(
@@ -133,7 +133,7 @@ fun KitchenDialog(store: AppStore, onDismiss: () -> Unit) {
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Scan your fridge or cupboard", style = MaterialTheme.typography.titleMedium)
-                            if (store.geminiKey.isBlank()) {
+                            if (!GeminiClient.isReady(store)) {
                                 Text(
                                     "Photo scanning uses Google's Gemini AI with your own free key. " +
                                         "It takes about 2 minutes to set up:",
@@ -187,10 +187,12 @@ fun KitchenDialog(store: AppStore, onDismiss: () -> Unit) {
                                     }) { Text("Choose photo") }
                                     if (scanning) CircularProgressIndicator(Modifier.size(24.dp).align(Alignment.CenterVertically))
                                 }
-                                TextButton(onClick = {
-                                    store.updateGeminiKey("")
-                                    keyText = ""
-                                }) { Text("Remove my Gemini key") }
+                                if (!GeminiClient.builtIn) {
+                                    TextButton(onClick = {
+                                        store.updateGeminiKey("")
+                                        keyText = ""
+                                    }) { Text("Remove my Gemini key") }
+                                }
                             }
                             message?.let { Text(it, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold) }
                         }

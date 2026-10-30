@@ -40,10 +40,13 @@ import com.freshstart.app.data.Account
 import kotlinx.coroutines.launch
 import com.freshstart.app.data.AppStore
 import com.freshstart.app.data.Calc
+import com.freshstart.app.data.GeminiClient
+import com.freshstart.app.data.Subscription
 
 @Composable
-fun SettingsScreen(store: AppStore, account: Account, onRemindersChanged: (Boolean) -> Unit) {
+fun SettingsScreen(store: AppStore, account: Account, subscription: Subscription, onRemindersChanged: (Boolean) -> Unit) {
     val profile = store.profile ?: return
+    val context = LocalContext.current
     var editing by rememberSaveable { mutableStateOf(false) }
 
     if (editing) {
@@ -79,6 +82,23 @@ fun SettingsScreen(store: AppStore, account: Account, onRemindersChanged: (Boole
         Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
 
         if (account.configured) AccountCard(store, account)
+
+        if (subscription.required) {
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("FreshStart Premium", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Your subscription is billed by Google Play. Cancel or change it there at any time.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    OutlinedButton(onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(subscription.manageUrl())))
+                        }
+                    }) { Text("Manage subscription") }
+                }
+            }
+        }
 
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -152,7 +172,8 @@ fun SettingsScreen(store: AppStore, account: Account, onRemindersChanged: (Boole
         Text(
             "Without an account, everything stays on this phone. With an account, your data is backed up privately to your account. FreshStart has no ads and never sells data. " +
                 "If you connect Health Connect, data is shared only with the health apps on this phone. " +
-                "If you add a Gemini key, only the kitchen photos you scan, your kitchen list (for meal ideas) and, when you ask the AI coach, a summary of your log are sent to Google. " +
+                (if (GeminiClient.builtIn) "Only " else "If you add a Gemini key, only ") +
+                "the kitchen photos you scan, your kitchen list (for meal ideas) and, when you ask the AI coach, a summary of your log are sent to Google's Gemini AI. " +
                 "It's a helper, not medical advice; check with your doctor before big diet changes.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
