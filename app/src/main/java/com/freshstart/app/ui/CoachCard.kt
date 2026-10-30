@@ -46,7 +46,11 @@ fun CoachCard(store: AppStore) {
 
     fun ask() {
         val today = LocalDate.now()
-        val summary = store.coachSummary(today) ?: return
+        val summary = runCatching { store.coachSummary(today) }.getOrNull()
+        if (summary == null) {
+            message = "Couldn't read your log. Try again."
+            return
+        }
         loading = true
         message = null
         scope.launch {
@@ -120,6 +124,7 @@ fun CoachCard(store: AppStore) {
                 }
                 if (loading) CircularProgressIndicator(Modifier.size(24.dp))
             }
+            if (loading) Text("Reading your log… this can take up to a minute.", style = MaterialTheme.typography.bodySmall)
             message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             Text(
                 "Your log summary is sent to Google to write these tips. It's a helper, not medical advice.",
