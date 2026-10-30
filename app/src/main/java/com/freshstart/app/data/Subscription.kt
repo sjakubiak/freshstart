@@ -127,11 +127,11 @@ class Subscription(context: Context) : PurchasesUpdatedListener {
         if (purchases.any { PRODUCT_ID in it.products && it.purchaseState == Purchase.PurchaseState.PENDING }) {
             problem = "Your payment is pending. FreshStart unlocks as soon as Google Play confirms it."
         }
-        setActive(owned.isNotEmpty())
+        saveActive(owned.isNotEmpty())
         if (active) problem = null
     }
 
-    private fun setActive(value: Boolean) {
+    private fun saveActive(value: Boolean) {
         active = value
         prefs.edit().putBoolean("active", value).apply()
     }
