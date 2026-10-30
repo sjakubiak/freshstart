@@ -38,6 +38,10 @@ class AppStore(context: Context) {
     /** Meal ideas Gemini suggested from your kitchen. */
     val aiIdeas = mutableStateListOf<MealIdea>()
 
+    /** The AI coach's latest advice, or null before the user has asked. */
+    var coachAdvice by mutableStateOf<CoachAdvice?>(null)
+        private set
+
     /** Your own free Gemini API key, for photo scanning. Blank means the feature is off. */
     var geminiKey by mutableStateOf("")
         private set
@@ -189,6 +193,17 @@ class AppStore(context: Context) {
         save()
     }
 
+    fun saveCoachAdvice(advice: CoachAdvice) {
+        coachAdvice = advice
+        save()
+    }
+
+    /** The summary of the log that the AI coach reads. */
+    fun coachSummary(today: java.time.LocalDate): String? {
+        val p = profile ?: return null
+        return Coach.summary(p, currentWeightKg, foods, weights, stepsByDay, today)
+    }
+
     fun updateGeminiKey(key: String) {
         geminiKey = key.trim()
         save()
@@ -277,6 +292,7 @@ class AppStore(context: Context) {
         customFoods.clear()
         pantry.clear()
         aiIdeas.clear()
+        coachAdvice = null
         lessonsRead.clear()
         hero = null
         badges.clear()
@@ -332,6 +348,17 @@ class AppStore(context: Context) {
                         howTo = o.optString("howTo", ""),
                         fromAi = true
                     )
+                )
+            }
+            root.optJSONObject("coach")?.let { o ->
+                val tips = o.optJSONArray("tips")
+                coachAdvice = CoachAdvice(
+                    date = o.optString("date", ""),
+                    headline = o.optString("headline", ""),
+                    tips = if (tips == null) emptyList() else (0 until tips.length()).map {
+                        val t = tips.getJSONObject(it)
+                        CoachTip(t.optString("title", ""), t.optString("detail", ""))
+                    }
                 )
             }
             root.optJSONArray("lessonsRead")?.let { arr ->
@@ -452,6 +479,13 @@ class AppStore(context: Context) {
                 })
             }
         })
+        coachAdvice?.let { a ->
+            root.put("coach", JSONObject().apply {
+                put("date", a.date)
+                put("headline", a.headline)
+                put("tips", JSONArray().apply { a.tips.forEach { put(JSONObject().put("title", it.title).put("detail", it.detail)) } })
+            })
+        }
         return root
     }
 

@@ -12,7 +12,7 @@ import java.net.URL
 
 /**
  * Talks to Google's Gemini API with the user's own free API key.
- * Used only for scanning kitchen photos and for meal ideas; nothing else is ever sent.
+ * Used only for scanning kitchen photos, meal ideas, and the AI coach when the user asks for it.
  */
 class GeminiClient(private val apiKey: String) {
     class GeminiException(message: String) : Exception(message)
@@ -69,6 +69,36 @@ class GeminiClient(private val apiKey: String) {
                 )
             }.getOrNull()
         }
+    }
+
+    /** Personal weight-loss coaching from a summary of the user's own log (see [Coach.summary]). */
+    suspend fun coachAdvice(summary: String, today: String): CoachAdvice {
+        val prompt = """
+            You are a warm, practical weight-loss coach in a Noom-style app that sorts food into
+            green (low calorie density), yellow (medium) and red (high) foods.
+            Below is a summary of one person's own log. Study it closely: weight trend vs. their planned pace,
+            calories vs. budget, the color split, which meals and days run high, foods that add the most
+            calories, logging gaps, and steps.
+            Give 5 specific, encouraging suggestions that will help them lose weight. Each must point to
+            something concrete in their data (name real foods, meals, days or numbers) and say exactly what to try,
+            such as a swap for a food they eat often. Start with what is going well if anything is.
+            If there is too little data, say so and suggest how to log so the advice can improve.
+            Don't suggest lowering their calorie budget or eating under 1200 kcal a day, and don't give medical advice.
+            Use plain, friendly language and the same weight units as the summary.
+            Reply with JSON only:
+            {"headline": "One-sentence overview of how they're doing.",
+             "tips": [{"title": "Short tip title", "detail": "Two or three sentences."}]}
+        """.trimIndent() + "\n\n" + summary
+        val json = generate(JSONArray().put(JSONObject().put("text", prompt)))
+        val tips = json.optJSONArray("tips") ?: JSONArray()
+        return CoachAdvice(
+            date = today,
+            headline = json.optString("headline", ""),
+            tips = (0 until tips.length()).mapNotNull { i ->
+                val o = tips.optJSONObject(i) ?: return@mapNotNull null
+                CoachTip(o.optString("title", ""), o.optString("detail", "")).takeIf { it.title.isNotBlank() || it.detail.isNotBlank() }
+            }
+        )
     }
 
     private suspend fun generate(parts: JSONArray): JSONObject = withContext(Dispatchers.IO) {
