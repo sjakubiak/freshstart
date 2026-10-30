@@ -89,7 +89,7 @@ class GeminiClient(private val apiKey: String) {
             {"headline": "One-sentence overview of how they're doing.",
              "tips": [{"title": "Short tip title", "detail": "Two or three sentences."}]}
         """.trimIndent() + "\n\n" + summary
-        val json = generate(JSONArray().put(JSONObject().put("text", prompt)))
+        val json = generate(JSONArray().put(JSONObject().put("text", prompt)), FAST_MODELS + MODELS)
         val tips = json.optJSONArray("tips") ?: JSONArray()
         return CoachAdvice(
             date = today,
@@ -101,14 +101,14 @@ class GeminiClient(private val apiKey: String) {
         )
     }
 
-    private suspend fun generate(parts: JSONArray): JSONObject = withContext(Dispatchers.IO) {
+    private suspend fun generate(parts: JSONArray, models: List<String> = MODELS): JSONObject = withContext(Dispatchers.IO) {
         val body = JSONObject()
             .put("contents", JSONArray().put(JSONObject().put("parts", parts)))
             .put("generationConfig", JSONObject().put("responseMimeType", "application/json"))
             .toString()
 
         var lastError = "Couldn't reach Gemini."
-        for (model in MODELS) {
+        for (model in models) {
             val conn = URL("https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent").openConnection() as HttpURLConnection
             try {
                 conn.requestMethod = "POST"
@@ -129,7 +129,9 @@ class GeminiClient(private val apiKey: String) {
                     code == 404 -> lastError = "Gemini model not found." // try the next model name
                     code == 400 || code == 401 || code == 403 ->
                         throw GeminiException("Gemini didn't accept the API key. Check it in Settings.")
-                    code == 429 -> throw GeminiException("Gemini's free limit was reached. Try again in a minute.")
+                    // Busy or out of free quota for this model: try the next one.
+                    code == 429 -> lastError = "Gemini's free limit was reached. Try again in a minute."
+                    code >= 500 -> lastError = "Gemini is busy right now (error $code). Try again in a minute."
                     else -> throw GeminiException("Gemini had a problem (error $code). Try again later.")
                 }
             } finally {
@@ -141,6 +143,9 @@ class GeminiClient(private val apiKey: String) {
 
     companion object {
         private val MODELS = listOf("gemini-flash-latest", "gemini-2.5-flash", "gemini-2.0-flash")
+
+        /** Quick models that answer in seconds, for text-only requests like the coach. */
+        private val FAST_MODELS = listOf("gemini-flash-lite-latest", "gemini-2.5-flash-lite")
         const val KEY_URL = "https://aistudio.google.com/apikey"
     }
 }
