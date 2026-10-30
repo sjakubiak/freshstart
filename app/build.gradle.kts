@@ -25,6 +25,8 @@ android {
         targetSdk = 36
         versionCode = buildNumber
         versionName = "1.0.$buildNumber"
+        // The Play build sells a subscription and runs AI on the developer's key (see Subscription.kt).
+        buildConfigField("boolean", "STORE_BUILD", storeBuild.toString())
     }
 
     // A fixed key kept in the repo so every new build installs over the old one
@@ -63,6 +65,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     lint {
         checkReleaseBuilds = false
@@ -83,9 +86,12 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-ai")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
+    implementation("com.android.billingclient:billing:8.0.0")
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")

@@ -1,6 +1,6 @@
 # FreshStart
 
-A free, private, Noom-style weight-loss app for Android. Everything stays on your phone: no account, no ads, no subscription.
+A private, color-coded weight-loss app for Android. No ads, and your data is never sold. The Google Play version is a subscription ($2/month after a 14-day free trial); the sideloaded APK is free.
 
 ## Features
 - **Personal plan**: enter your age, height, weight, goal and pace; get a daily calorie budget (Mifflin-St Jeor formula with a safe minimum).
@@ -30,3 +30,8 @@ CI builds it automatically when the `UPLOAD_KEYSTORE_BASE64` and `UPLOAD_KEYSTOR
 
 Firebase is enabled by adding `app/google-services.json` (registered for both `com.freshstart.app` and `com.sjakubiak.freshstart`). Firestore security rules are in `firestore.rules`.
 The privacy policy and account deletion pages are in `docs/`, published with GitHub Pages.
+
+### Subscription and AI (Play build only)
+- The Play build shows a paywall until the user has an active `freshstart_premium` subscription (Google Play Billing; see `data/Subscription.kt`). Base plans, prices and the 14-day free-trial offer are set up in Play Console, not in code. The sideload build is free and has no paywall.
+- AI features (kitchen photo scan, AI meal ideas, AI coach) run through Firebase AI Logic on the developer's Firebase project, so subscribers don't need a key. The sideload build still uses the user's own Gemini key.
+- App Check (Play Integrity) is installed in the Play build; switch on enforcement for AI Logic in the Firebase console once the app is live on Play.

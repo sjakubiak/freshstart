@@ -9,32 +9,31 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import com.freshstart.app.BuildConfig
+import com.google.firebase.Firebase
+import com.google.firebase.ai.ai
+import com.google.firebase.ai.type.GenerativeBackend
+import com.google.firebase.ai.type.content
+import com.google.firebase.ai.type.generationConfig
+import kotlinx.coroutines.CancellationException
 
 /**
- * Talks to Google's Gemini API with the user's own free API key.
- * Used only for scanning kitchen photos, meal ideas, and the AI coach when the user asks for it.
+ * Talks to Google's Gemini AI. Used only for scanning kitchen photos, meal ideas, and the AI coach when the user asks for it.
+ * The Play build goes through Firebase AI Logic on the developer's own key (subscribers need no key);
+ * the sideloaded build uses the user's own free API key, sent straight to the Gemini API.
  */
-class GeminiClient(private val apiKey: String) {
+class GeminiClient private constructor(private val apiKey: String?) {
     class GeminiException(message: String) : Exception(message)
 
     /** Food items visible in a photo of a fridge, freezer or cupboard. */
     suspend fun foodsInPhoto(photo: Bitmap): List<String> {
-        val jpeg = ByteArrayOutputStream().also { photo.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
         val prompt = """
             This is a photo of someone's fridge, freezer, pantry or cupboard.
             List every food or drink item you can identify. Use short, generic, lowercase names
             (for example "eggs", "greek yogurt", "spinach", "chicken breast", "pasta", "peanut butter").
             Skip non-food items. Reply with JSON only: {"items": ["eggs", "milk"]}
         """.trimIndent()
-        val parts = JSONArray()
-            .put(JSONObject().put("text", prompt))
-            .put(
-                JSONObject().put(
-                    "inline_data",
-                    JSONObject().put("mime_type", "image/jpeg").put("data", Base64.encodeToString(jpeg, Base64.NO_WRAP))
-                )
-            )
-        val json = generate(parts)
+        val json = generate(prompt, photo)
         val items = json.optJSONArray("items") ?: return emptyList()
         return (0 until items.length()).map { items.getString(it).trim().lowercase() }.filter { it.isNotBlank() }.distinct()
     }
@@ -52,7 +51,7 @@ class GeminiClient(private val apiKey: String) {
             {"meals": [{"name": "...", "meal": "BREAKFAST", "calories": 350, "color": "GREEN",
               "ingredients": ["eggs", "spinach"], "howTo": "One or two short sentences."}]}
         """.trimIndent()
-        val json = generate(JSONArray().put(JSONObject().put("text", prompt)))
+        val json = generate(prompt)
         val meals = json.optJSONArray("meals") ?: return emptyList()
         return (0 until meals.length()).mapNotNull { i ->
             val o = meals.getJSONObject(i)
@@ -89,7 +88,7 @@ class GeminiClient(private val apiKey: String) {
             {"headline": "One-sentence overview of how they're doing.",
              "tips": [{"title": "Short tip title", "detail": "Two or three sentences."}]}
         """.trimIndent() + "\n\n" + summary
-        val json = generate(JSONArray().put(JSONObject().put("text", prompt)), FAST_MODELS + MODELS)
+        val json = generate(prompt, models = FAST_MODELS + MODELS)
         val tips = json.optJSONArray("tips") ?: JSONArray()
         return CoachAdvice(
             date = today,
@@ -101,7 +100,53 @@ class GeminiClient(private val apiKey: String) {
         )
     }
 
-    private suspend fun generate(parts: JSONArray, models: List<String> = MODELS): JSONObject = withContext(Dispatchers.IO) {
+    private suspend fun generate(prompt: String, photo: Bitmap? = null, models: List<String> = MODELS): JSONObject =
+        if (apiKey == null) generateWithFirebase(prompt, photo, models) else generateWithKey(apiKey, prompt, photo, models)
+
+    /** Firebase AI Logic: the request is billed to the app's Firebase project, so no user key is needed. */
+    private suspend fun generateWithFirebase(prompt: String, photo: Bitmap?, models: List<String>): JSONObject {
+        var lastError = "Couldn't reach the AI. Try again in a minute."
+        for (model in models) {
+            val generative = Firebase.ai(backend = GenerativeBackend.googleAI())
+                .generativeModel(model, generationConfig = generationConfig { responseMimeType = "application/json" })
+            try {
+                val reply = generative.generateContent(content {
+                    if (photo != null) image(photo)
+                    text(prompt)
+                }).text ?: throw GeminiException("The AI didn't send an answer. Try again.")
+                return parseReply(reply)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: GeminiException) {
+                throw e
+            } catch (e: Exception) {
+                // Model retired, busy or out of quota: try the next one.
+                val name = e.javaClass.simpleName
+                lastError = when {
+                    "Quota" in name -> "The AI is very busy right now. Try again in a few minutes."
+                    "ServiceDisabled" in name || "APINotConfigured" in name -> "AI features aren't switched on for this app yet. Try again later."
+                    e is java.io.IOException || "Timeout" in name -> "Couldn't connect. Check your internet connection and try again."
+                    else -> lastError
+                }
+            }
+        }
+        throw GeminiException(lastError)
+    }
+
+    private fun parseReply(reply: String): JSONObject =
+        JSONObject(reply.trim().removePrefix("```json").removePrefix("```").removeSuffix("```"))
+
+    private suspend fun generateWithKey(apiKey: String, prompt: String, photo: Bitmap?, models: List<String>): JSONObject = withContext(Dispatchers.IO) {
+        val parts = JSONArray().put(JSONObject().put("text", prompt))
+        if (photo != null) {
+            val jpeg = ByteArrayOutputStream().also { photo.compress(Bitmap.CompressFormat.JPEG, 80, it) }.toByteArray()
+            parts.put(
+                JSONObject().put(
+                    "inline_data",
+                    JSONObject().put("mime_type", "image/jpeg").put("data", Base64.encodeToString(jpeg, Base64.NO_WRAP))
+                )
+            )
+        }
         val body = JSONObject()
             .put("contents", JSONArray().put(JSONObject().put("parts", parts)))
             .put("generationConfig", JSONObject().put("responseMimeType", "application/json"))
@@ -124,7 +169,7 @@ class GeminiClient(private val apiKey: String) {
                     code in 200..299 -> {
                         val reply = JSONObject(text).getJSONArray("candidates").getJSONObject(0)
                             .getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text")
-                        return@withContext JSONObject(reply.trim().removePrefix("```json").removePrefix("```").removeSuffix("```"))
+                        return@withContext parseReply(reply)
                     }
                     code == 404 -> lastError = "Gemini model not found." // try the next model name
                     code == 400 || code == 401 || code == 403 ->
@@ -147,5 +192,12 @@ class GeminiClient(private val apiKey: String) {
         /** Quick models that answer in seconds, for text-only requests like the coach. */
         private val FAST_MODELS = listOf("gemini-flash-lite-latest", "gemini-2.5-flash-lite")
         const val KEY_URL = "https://aistudio.google.com/apikey"
+
+        /** True when AI runs on the app's own key, so there's nothing for the user to set up. */
+        val builtIn: Boolean = BuildConfig.STORE_BUILD
+
+        fun isReady(store: AppStore): Boolean = builtIn || store.geminiKey.isNotBlank()
+
+        fun forStore(store: AppStore): GeminiClient = GeminiClient(if (builtIn) null else store.geminiKey)
     }
 }

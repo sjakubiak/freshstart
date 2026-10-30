@@ -2,7 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- Only used to send kitchen photos to Gemini when you've added your own key. -->
+    <!-- Sign-in, backup, Google Play billing and the optional AI features. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <uses-permission android:name="android.permission.health.WRITE_WEIGHT" />

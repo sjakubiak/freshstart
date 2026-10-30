@@ -37,6 +37,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import com.freshstart.app.data.Account
 import com.freshstart.app.data.AppStore
+import com.freshstart.app.data.Subscription
+import com.freshstart.app.ui.PaywallScreen
 import com.freshstart.app.ui.SignInScreen
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
@@ -61,9 +63,16 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val store = storeFor(this)
         val account = accountFor(this, store)
+        val subscription = subscriptionFor(this)
         setContent {
-            FreshStartTheme { App(store, account) }
+            FreshStartTheme { App(store, account, subscription) }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Picks up a purchase, renewal or cancellation made while the app was in the background.
+        subscriptionFor(this).refresh()
     }
 
     companion object {
@@ -71,11 +80,16 @@ class MainActivity : ComponentActivity() {
 
         private var account: Account? = null
 
+        private var subscription: Subscription? = null
+
         fun storeFor(activity: ComponentActivity): AppStore =
             store ?: AppStore(activity.applicationContext).also { store = it }
 
         fun accountFor(activity: ComponentActivity, store: AppStore): Account =
             account ?: Account(activity.applicationContext, store).also { account = it }
+
+        fun subscriptionFor(activity: ComponentActivity): Subscription =
+            subscription ?: Subscription(activity.applicationContext).also { subscription = it }
     }
 }
 
@@ -94,7 +108,7 @@ private val tabs = listOf(
 )
 
 @Composable
-fun App(store: AppStore, account: Account) {
+fun App(store: AppStore, account: Account, subscription: Subscription) {
     val context = LocalContext.current
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
@@ -159,6 +173,11 @@ fun App(store: AppStore, account: Account) {
         return
     }
 
+    if (subscription.required && !subscription.active) {
+        Scaffold { padding -> PaywallScreen(subscription, Modifier.padding(padding)) }
+        return
+    }
+
     androidx.compose.runtime.LaunchedEffect(Unit) {
         store.importFromHealth()
         store.refreshSteps(java.time.LocalDate.now())
@@ -195,7 +214,7 @@ fun App(store: AppStore, account: Account) {
                 HERO_TAB -> HeroScreen(store)
                 3 -> ProgressScreen(store)
                 LEARN_TAB -> LearnScreen(store, lessonToOpen)
-                else -> SettingsScreen(store, account, onRemindersChanged = { applyReminders(it) })
+                else -> SettingsScreen(store, account, subscription, onRemindersChanged = { applyReminders(it) })
             }
         }
     }
