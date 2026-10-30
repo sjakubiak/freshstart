@@ -99,6 +99,8 @@ fun ProgressScreen(store: AppStore) {
             }
         }
 
+        item { CoachCard(store) }
+
         item {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp)) {

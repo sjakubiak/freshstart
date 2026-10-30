@@ -152,7 +152,7 @@ fun SettingsScreen(store: AppStore, account: Account, onRemindersChanged: (Boole
         Text(
             "Without an account, everything stays on this phone. With an account, your data is backed up privately to your account. FreshStart has no ads and never sells data. " +
                 "If you connect Health Connect, data is shared only with the health apps on this phone. " +
-                "If you add a Gemini key, only the kitchen photos you scan and your kitchen list (for meal ideas) are sent to Google. " +
+                "If you add a Gemini key, only the kitchen photos you scan, your kitchen list (for meal ideas) and, when you ask the AI coach, a summary of your log are sent to Google. " +
                 "It's a helper, not medical advice; check with your doctor before big diet changes.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
